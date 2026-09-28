@@ -17,6 +17,7 @@ def generate_prompt(prompt: str, profile: Profile = None, persistence: bool = Tr
     messages.append({"role": "system", "content": reply})
 
     return reply
+    return "prompt"
 
 def main():
     while True:

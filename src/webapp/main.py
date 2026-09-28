@@ -1,5 +1,8 @@
 import gradio as gr
 from src.model.basic_chat_bot import generate_prompt
+import logging
+
+logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s")
 
 gr.Markdown("# Ici c'est la galère")
 
