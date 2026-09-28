@@ -1,6 +1,6 @@
 import json
 import os
-
+# C'est la dernière fois qu'on me supprime une branche
 from galerelm.models.chat import Chat, Options, Message, MessageList
 from dotenv import load_dotenv
 from rapideAPI.client import RapideAPI
