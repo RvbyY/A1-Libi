@@ -20,42 +20,13 @@ api = RapideAPI(
 
 user_prompt = input("\nPosez votre question au modèle : ")
 
-# PAS TOUCHER SVP
-options = Options(
-    seed=0,                
-    temperature=0.7,       
-    top_k=40,              
-    top_p=0.9,             
-    min_p=0.05,            
-    stop=["\nuser:", "</s>"], 
-    num_ctx=4096,          
-    num_predict=512        
-)
+llm = Chat(model=hf_model, api=api)
 
-messages = MessageList([
-    Message(role="user", content=user_prompt)
-])
-
-user_chat = Chat(
-    model=hf_model, 
-    messages=messages, 
-    tools=None, 
-    request_format="json",
-    options=options, 
-    stream=True, 
-    think="medium",
-    keep_alive="5m", 
-    logprobs=False, 
-    top_logprobs=0
-)
+llm.ask(user_prompt)
 
 print("\n--- RÉPONSE DU MODÈLE ---")
 
-for token in user_chat.execute_stream(api):
-    print(token, end="", flush=True)
-
-print()
-ollama_response = user_chat.last_response
+ollama_response = llm.last_response
 
 if ollama_response:
     print("\n--- OBJET CHATRESPONSE SAUVEGARDÉ ---")
