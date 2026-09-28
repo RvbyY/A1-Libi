@@ -1,5 +1,3 @@
-.venv
-flagged
 src/galerelm/models/__pycache__
 src/galerelm/unit_tests/__pycache__
 src/rapideAPI/__pycache__
