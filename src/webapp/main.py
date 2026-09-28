@@ -7,8 +7,13 @@ logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(name)s - %(level
 gr.Markdown("# Ici c'est la galère")
 
 chatbot = gr.Interface(
+
     generate_prompt,
-    inputs=["textbox"],
+
+    title="SensAI",
+    description="build the most capable AI assistant we can, starting from a minimal local chatbot and enriching it with features we choosen.",
+
+    inputs=["textbox"], 
     outputs=["textbox"],
     additional_inputs=[
         gr.State(None),  # profile: Profile = None
@@ -26,3 +31,5 @@ chatbot = gr.Interface(
     ],
     api_name="galere",
 )
+
+chatbot.launch(share=True)
