@@ -386,6 +386,14 @@ class Chat(Base):
             print(token, end="", flush=True)
         print()
 
+        response: Message = self.last_response.message
+        self.add_assistant_response(response.content, response.images, response.tool_calls)
+
+    def print_messages(self):
+        for x in self.messages:
+            print(x.from_format())
+
+
 class TopLogProb(Base):
     __tablename__ = "top_logprobs"
     id: int = Column(Integer, primary_key=True, autoincrement=True)
