@@ -29,6 +29,8 @@ class Context(Base):
         order_by="Message.id"
     )
 
+    deep_context = relationship("DeepContext", uselist=False, backref="context", cascade="all, delete-orphan")
+
     def __init__(self, profile_id: str, context_limit: int = 10, options: Optional[Options] = None, messages: Optional[MessageList] = None):
         self.profile_id = profile_id
         self.context_limit = context_limit
@@ -49,6 +51,10 @@ class Context(Base):
         if len(self.messages) > self.context_limit:
             overflow_count = len(self.messages) - self.context_limit
             overflow_messages = MessageList(self.messages[:overflow_count])
+
+            # Si la base a été rechargée et que le DeepContext n'existait pas encore, on le crée à la volée
+            if self.deep_context is None:
+                self.deep_context = DeepContext(vector_limit=4096)
 
             self.deep_context.save(overflow_messages)
 
