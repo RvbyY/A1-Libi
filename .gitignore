@@ -2,11 +2,16 @@ src/galerelm/models/__pycache__
 src/galerelm/unit_tests/__pycache__
 src/rapideAPI/__pycache__
 src/webap/__pycache__
+
 venv/
 bin/
 lib/
 lib64/
 include/
 pyvenv.cfg
+
+.env
+.venv/
 __pycache__/
 *.pyc
+ollama.log
