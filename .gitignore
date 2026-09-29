@@ -2,3 +2,8 @@ src/galerelm/models/__pycache__
 src/galerelm/unit_tests/__pycache__
 src/rapideAPI/__pycache__
 src/webap/__pycache__
+
+.env
+.venv/
+__pycache__/
+*.pyc
