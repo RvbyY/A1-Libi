@@ -5,7 +5,7 @@ from sqlalchemy import Column, Integer, String, Boolean, Text, ForeignKey, Float
 from sqlalchemy.orm import relationship, declarative_base
 
 
-from rapideAPI import RapideAPI
+from src.rapideAPI.client import RapideAPI
 from src.galerelm.models.constants import SYSTEM_PROMPT
 
 Base = declarative_base()
