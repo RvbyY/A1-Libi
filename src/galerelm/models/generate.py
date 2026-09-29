@@ -81,8 +81,8 @@ class GenerateRequest(Base):
 
     def __init__(
         self, 
-        model: str, 
-        prompt: str, 
+        model: str = None, 
+        prompt: str = None, 
         suffix: str = None, 
         images: list[str] = None, 
         request_format: Format = None, 
@@ -118,7 +118,7 @@ class GenerateRequest(Base):
         }
         if self.suffix is not None:
             res["suffix"] = self.suffix
-        if self.images:
+        if self.images is not None:
             res["images"] = self.images
         if self.request_format is not None:
             res["format"] = self.request_format
@@ -248,11 +248,11 @@ class GenerateResponse(Base):
 
     def __init__(
         self,
-        model: str,
-        created_at: str,
-        response: str,
+        model: str = None,
+        created_at: str = None,
+        response: str = None,
         done: bool,
-        done_reason: str,
+        done_reason: str = None,
         total_duration: int,
         load_duration: int,
         prompt_eval_count: int,

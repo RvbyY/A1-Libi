@@ -4,8 +4,8 @@ from collections import UserList
 from sqlalchemy import Column, Integer, String, Boolean, Text, ForeignKey, Float, JSON
 from sqlalchemy.orm import relationship, declarative_base
 
-from model.basic_chat_bot import messages
-from rapideAPI import RapideAPI
+
+from src.rapideAPI.client import RapideAPI
 from src.galerelm.models.constants import SYSTEM_PROMPT
 
 Base = declarative_base()
@@ -80,6 +80,7 @@ class Message(Base):
     id: int = Column(Integer, primary_key=True, autoincrement=True)
     chat_id: int = Column(Integer, ForeignKey("chats.id"), nullable=True)
     response_id: int = Column(Integer, ForeignKey("chat_responses.id"), nullable=True)
+    context_id: int = Column(Integer, ForeignKey("contexts.id"), nullable=True)
 
     role: str = Column(String, nullable=False)
     content: str = Column(Text, nullable=False)
@@ -216,7 +217,8 @@ class ToolsList(UserList):
 class Options(Base):
     __tablename__ = "options"
     id: int = Column(Integer, primary_key=True, autoincrement=True)
-    chat_id: int = Column(Integer, ForeignKey("chats.id"))
+    chat_id: int = Column(Integer, ForeignKey("chats.id"), nullable=True)
+    context_id: int = Column(Integer, ForeignKey("contexts.id"), nullable=True)
 
     seed: int = Column(Integer)
     temperature: float = Column(Float)
@@ -283,20 +285,19 @@ class Chat(Base):
     tools = relationship("Tools", collection_class=ToolsList, backref="chat", cascade="all, delete-orphan")
     options = relationship("Options", uselist=False, backref="chat", cascade="all, delete-orphan")
 
-    def __init__(self, model: str, api: RapideAPI, messages: MessageList | None = None, tools: ToolsList | None = None, think: Union[bool, Think] = "medium", keep_alive: Union[str, int] = "2m", logprobs: bool = False,
-                 top_logprobs: int = 0, options: Options = Options(), request_format: Format = "json", stream: bool = True):
+    def __init__(self, model: str, api: RapideAPI = None, messages: MessageList | None = None, tools: ToolsList | None = None, think: Union[bool, Think] = None, keep_alive: Union[str, int] = "2m", logprobs: bool = False,
+                 top_logprobs: int = None, options: Options = None, request_format: Format = None, stream: bool = True):
         self.model = model
         self.api = api
         self.messages = messages if messages is not None else MessageList([])
         self.tools = tools if tools is not None else ToolsList([])
         self.request_format = request_format
-        self.options = options
+        self.options = options if options is not None else Options()
         self.stream = stream
         self.think = think
         self.keep_alive = keep_alive
         self.logprobs = logprobs
         self.top_logprobs = top_logprobs
-        self.last_response = None
         self.last_response = None
         self.set_system_prompt()
 
@@ -371,6 +372,9 @@ class Chat(Base):
         self.messages.append(message)
 
     def set_system_prompt(self):
+        """Injecte le prompt système à la position 0. Idempotent : ne fait rien s'il y en a déjà un."""
+        if self.messages and len(self.messages) > 0 and self.messages[0].role == "system":
+            return
         message = Message(role="system", content=SYSTEM_PROMPT, images=[], tool_calls=[], thinking=None)
         self.messages.insert(0, message)
 

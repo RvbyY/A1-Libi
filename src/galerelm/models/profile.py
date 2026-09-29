@@ -1,16 +1,20 @@
 import uuid
 from typing import Literal
 from sqlalchemy import Column, String, Text
+from sqlalchemy.orm import relationship
 from src.galerelm.models.chat import Base
+from src.galerelm.models.context import Context
 
 class Profile(Base):
     __tablename__ = 'profiles'
-    
+
     id: str = Column(String, primary_key=True, default=lambda: str(uuid.uuid4()))
     name: str = Column(String, nullable=False)
     email: str = Column(String, nullable=False, unique=True)
     password: str = Column(String, nullable=False)
     instructions: str = Column(Text, nullable=False)
+    
+    contexts = relationship("Context", backref="profile", cascade="all, delete-orphan")
 
     def __init__(self, name: str, email: str, instructions: str):
         self.id = str(uuid.uuid4())
