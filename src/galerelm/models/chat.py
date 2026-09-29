@@ -4,7 +4,7 @@ from collections import UserList
 from sqlalchemy import Column, Integer, String, Boolean, Text, ForeignKey, Float, JSON
 from sqlalchemy.orm import relationship, declarative_base
 
-from model.basic_chat_bot import messages
+
 from rapideAPI import RapideAPI
 from src.galerelm.models.constants import SYSTEM_PROMPT
 
@@ -80,6 +80,7 @@ class Message(Base):
     id: int = Column(Integer, primary_key=True, autoincrement=True)
     chat_id: int = Column(Integer, ForeignKey("chats.id"), nullable=True)
     response_id: int = Column(Integer, ForeignKey("chat_responses.id"), nullable=True)
+    context_id: int = Column(Integer, ForeignKey("contexts.id"), nullable=True)
 
     role: str = Column(String, nullable=False)
     content: str = Column(Text, nullable=False)
@@ -216,7 +217,8 @@ class ToolsList(UserList):
 class Options(Base):
     __tablename__ = "options"
     id: int = Column(Integer, primary_key=True, autoincrement=True)
-    chat_id: int = Column(Integer, ForeignKey("chats.id"))
+    chat_id: int = Column(Integer, ForeignKey("chats.id"), nullable=True)
+    context_id: int = Column(Integer, ForeignKey("contexts.id"), nullable=True)
 
     seed: int = Column(Integer)
     temperature: float = Column(Float)
