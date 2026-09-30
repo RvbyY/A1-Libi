@@ -44,8 +44,20 @@ def send_push(recipient: str, message: str) -> bool:
     except Exception:
         return False
 
-def send_notification(user_id: str, message: str, channel: str = "push") -> bool:
-    """Envoie une notif (push, sms, slack...)."""
+SENDERS = {
+    "email": send_email,
+    "sms": send_sms,
+    "slack": send_slack,
+    "push": send_push
+}
 
-    return False
-    return True
+def send_notification(recipient: str, message: str, channel: str) -> bool:
+    """Envoie une notif (push, sms, slack...)."""
+    validator = VALIDATORS.get(channel)
+    sender = SENDERS.get(channel)
+
+    if not validator or not sender:
+        return False
+    if not validator(recipient):
+        return False
+    return sender(recipient, message)
