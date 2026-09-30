@@ -1,5 +1,6 @@
 import os
-from galerelm.models.chat import Base,Chat, Options, Message, MessageList
+# C'est la dernière fois qu'on me supprime une branche
+from galerelm.models.chat import Chat, Options, Message, MessageList
 from dotenv import load_dotenv
 from rapideAPI.client import RapideAPI
 import logging
@@ -45,42 +46,23 @@ api = RapideAPI(
     default_headers={"Authorization": "TOKEN"}
 )
 
-print(f"\nBienvenue {user_profile.name} ! (Historique: {len(user_context.messages)} messages chargés)")
-print("Tapez 'quit' pour quitter.\n")
+user_prompt = input("\nPosez votre question au modèle : ")
 
-while True:
-    user_prompt = input("Vous : ")
-    if user_prompt.lower() in ["quit", "exit", "q"]:
-        break
+llm = Chat(model=hf_model, api=api)
 
-    user_context.add(Message(role="user", content=user_prompt))
-    session.commit()
+llm.ask(user_prompt)
 
     llm_messages = MessageList([
         Message(role=m.role, content=m.content, images=m.images)
         for m in user_context.messages
     ])
 
-    llm = Chat(model=hf_model, api=api, messages=llm_messages)
+ollama_response = llm.last_response
 
-    print("\nSensAI : ", end="", flush=True)
-
-    try:
-        for token in llm.execute_stream(api):
-            print(token, end="", flush=True)
-        print("\n")
-    except Exception as e:
-        print(f"\n[!] Erreur de connexion : {e}\n")
-        continue
-
-    if llm.last_response and llm.last_response.message:
-        assistant_msg = llm.last_response.message
-        new_msg = Message(
-            role="assistant", 
-            content=assistant_msg.content, 
-            images=assistant_msg.images
-        )
-        user_context.add(new_msg)
-        session.commit()
-    else:
-        print("[!] Erreur: Aucune réponse retournée par le modèle.")
+if ollama_response:
+    print("\n--- OBJET CHATRESPONSE SAUVEGARDÉ ---")
+    print(f"Modèle: {ollama_response.model}")
+    print(f"Tokens évalués: {ollama_response.eval_count}")
+    print(f"Temps de génération: {ollama_response.eval_duration / 1e9:.2f} s")
+else:
+    print("\nErreur: Flux interrompu avant la fin, réponse incomplète.")
