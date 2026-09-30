@@ -1,4 +1,8 @@
 import requests
+from src.galerelm.models.profile import Profile
+from typing import Literal
+
+Structure = Literal["json", "csv"]
 
 from src.model.intent_classifier import classify_request
 from src.model.ollama_client import call_ollama
