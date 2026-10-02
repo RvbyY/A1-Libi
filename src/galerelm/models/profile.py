@@ -1,7 +1,17 @@
+"""
+Profile — Profil utilisateur.
+Contient les informations de l'utilisateur et ses instructions système personnalisées.
+"""
 import uuid
-from typing import Literal
+import logging
+
 from sqlalchemy import Column, String, Text
-from src.galerelm.models.chat import Base
+from sqlalchemy.orm import relationship
+
+from src.galerelm.models.base import Base
+
+logger = logging.getLogger("galerelm.models.profile")
+
 
 class Profile(Base):
     __tablename__ = 'profiles'
@@ -12,12 +22,15 @@ class Profile(Base):
     password: str = Column(String, nullable=False)
     instructions: str = Column(Text, nullable=False)
 
+    contexts = relationship("Context", backref="profile", cascade="all, delete-orphan")
+
     def __init__(self, name: str, email: str, instructions: str):
         self.id = str(uuid.uuid4())
         self.name = name
         self.email = email
         self.password = ""
         self.instructions = instructions
+        logger.info(f"[Profile] Nouveau profil créé : {name} ({email})")
 
     def format(self) -> dict:
         return {
