@@ -2,18 +2,27 @@
 SensAI — Point d'entrée principal du framework LLM.
 """
 import os
-import logging
+from galerelm.models.chat import Base,Chat, Options, Message, MessageList
 from dotenv import load_dotenv
+from rapideAPI.client import RapideAPI
+import logging
 
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 
+<<<<<<< HEAD
 from src.galerelm.models import Base, Chat, Message, Context, Profile
 from src.rapideAPI import RapideAPI
+=======
+from src.galerelm.models.profile import Profile
+from src.galerelm.models.context import Context
+from src.galerelm.models.deep_context import DeepContext, LongTermMemory
+>>>>>>> dfd42405cc4d4172756f6d9dcd0878a8cdb8f91e
 
 logger = logging.getLogger("sensai")
 
 
+<<<<<<< HEAD
 class SensAI:
     """
     Classe principale qui encapsule toute la logique du framework :
@@ -26,6 +35,14 @@ class SensAI:
         load_dotenv()
         self.model = model or os.getenv("HF_MODEL")
         api_url = api_url or os.getenv("OLLAMA_HOST")
+=======
+engine = create_engine('sqlite:///galerelm.db')
+Base.metadata.create_all(engine)
+SessionLocal = sessionmaker(bind=engine)
+session = SessionLocal()
+
+user_profile = session.query(Profile).filter_by(email="user@sensai.ai").first()
+>>>>>>> dfd42405cc4d4172756f6d9dcd0878a8cdb8f91e
 
         # ── Base de données ──────────────────────────────────────────
         logger.info(f"Connexion à la base de données ({db_url})...")
@@ -42,13 +59,21 @@ class SensAI:
         self.profile: Profile = None
         self.context: Context = None
 
+<<<<<<< HEAD
     # ── Gestion du profil ────────────────────────────────────────────
+=======
+api = RapideAPI(
+    base_url=ollama_host,
+    default_headers={"Authorization": "TOKEN"}
+)
+>>>>>>> dfd42405cc4d4172756f6d9dcd0878a8cdb8f91e
 
     def load_or_create_profile(self, email: str = "user@sensai.ai", name: str = "Utilisateur",
                                 instructions: str = "Tu es SensAI, un assistant intelligent et concis.") -> "SensAI":
         """Charge un profil existant ou en crée un nouveau. Retourne self pour le chaînage."""
         self.profile = self.session.query(Profile).filter_by(email=email).first()
 
+<<<<<<< HEAD
         if not self.profile:
             logger.info(f"Création d'un nouveau profil ({email}).")
             self.profile = Profile(name=name, email=email, instructions=instructions)
@@ -69,9 +94,26 @@ class SensAI:
             logger.info(f"Contexte chargé. Messages en mémoire : {len(self.context.messages)}")
 
         return self
+=======
+while True:
+    user_prompt = input("Vous : ")
+    if user_prompt.lower() in ["quit", "exit", "q"]:
+        break
+
+    user_context.add(Message(role="user", content=user_prompt))
+    session.commit()
+
+    llm_messages = MessageList([
+        Message(role=m.role, content=m.content, images=m.images)
+        for m in user_context.messages
+    ])
+
+    llm = Chat(model=hf_model, api=api, messages=llm_messages)
+>>>>>>> dfd42405cc4d4172756f6d9dcd0878a8cdb8f91e
 
     # ── Échange unique ───────────────────────────────────────────────
 
+<<<<<<< HEAD
     def chat(self, prompt: str) -> str:
         """
         Envoie un prompt au LLM et retourne la réponse complète.
@@ -91,6 +133,22 @@ class SensAI:
             api=self.api,
             messages=self.context.get_messages_copy(),
             system_prompt=system_prompt,
+=======
+    try:
+        for token in llm.execute_stream(api):
+            print(token, end="", flush=True)
+        print("\n")
+    except Exception as e:
+        print(f"\n[!] Erreur de connexion : {e}\n")
+        continue
+
+    if llm.last_response and llm.last_response.message:
+        assistant_msg = llm.last_response.message
+        new_msg = Message(
+            role="assistant", 
+            content=assistant_msg.content, 
+            images=assistant_msg.images
+>>>>>>> dfd42405cc4d4172756f6d9dcd0878a8cdb8f91e
         )
 
         # 3. Streamer la réponse
