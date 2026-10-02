@@ -81,15 +81,16 @@ class SensAI:
             raise RuntimeError("Aucun profil chargé. Appelez load_or_create_profile() d'abord.")
 
         # 1. Persister le message utilisateur
-        self.context.add(Message(role="user", content=prompt))
+        self.context.add(Message(role="user", content=prompt), api_client=self.api)
         self.session.commit()
 
-        # 2. Construire le Chat avec une copie détachée des messages
+        # 2. Construire le Chat avec RAG (injection de souvenirs pertinents)
+        system_prompt = self._build_augmented_prompt(prompt)
         llm = Chat(
             model=self.model,
             api=self.api,
             messages=self.context.get_messages_copy(),
-            system_prompt=self.profile.instructions,
+            system_prompt=system_prompt,
         )
 
         # 3. Streamer la réponse
@@ -105,12 +106,43 @@ class SensAI:
                 role="assistant",
                 content=assistant_msg.content,
                 images=assistant_msg.images,
-            ))
+            ), api_client=self.api)
             self.session.commit()
         else:
             logger.error("Aucune réponse retournée par le modèle.")
 
         return full_response
+
+    def _build_augmented_prompt(self, query: str) -> str:
+        """
+        Construit le prompt système enrichi avec les mémoires long terme pertinentes (RAG).
+        Si aucune mémoire n'est trouvée, retourne les instructions brutes du profil.
+        """
+        base_instructions = self.profile.instructions
+
+        if not self.context.deep_context or not self.context.deep_context.memories:
+            return base_instructions
+
+        try:
+            results = self.context.deep_context.search(query, self.api, top_k=3)
+        except Exception as e:
+            logger.warning(f"[RAG] Recherche de mémoires échouée : {e}")
+            return base_instructions
+
+        if not results:
+            return base_instructions
+
+        memory_lines = []
+        for score, mem in results:
+            memory_lines.append(f"- [{mem.role}] {mem.content}")
+
+        augmented = (
+            f"{base_instructions}\n\n"
+            f"Voici des informations pertinentes issues de conversations précédentes :\n"
+            + "\n".join(memory_lines)
+        )
+        logger.info(f"[RAG] {len(results)} mémoires injectées dans le prompt système.")
+        return augmented
 
     # ── Boucle interactive (REPL) ────────────────────────────────────
 
@@ -145,14 +177,15 @@ class SensAI:
                 continue
 
             # ── Échange normal avec le LLM ───────────────────────────
-            self.context.add(Message(role="user", content=user_prompt))
+            self.context.add(Message(role="user", content=user_prompt), api_client=self.api)
             self.session.commit()
 
+            system_prompt = self._build_augmented_prompt(user_prompt)
             llm = Chat(
                 model=self.model,
                 api=self.api,
                 messages=self.context.get_messages_copy(),
-                system_prompt=self.profile.instructions,
+                system_prompt=system_prompt,
             )
 
             print("\nSensAI : ", end="", flush=True)
@@ -171,7 +204,7 @@ class SensAI:
                     role="assistant",
                     content=assistant_msg.content,
                     images=assistant_msg.images,
-                ))
+                ), api_client=self.api)
                 self.session.commit()
             else:
                 print("[!] Erreur: Aucune réponse retournée par le modèle.")
@@ -277,6 +310,35 @@ class SensAI:
         self.session.commit()
         print("\n[✓] Nouveau contexte créé. Historique vierge.\n")
 
+    def _cmd_recall(self, args: str):
+        """Rechercher dans la mémoire long terme."""
+        if not args:
+            print("\n[!] Usage : /recall <votre requête>\n")
+            return
+
+        if not self.context.deep_context or not self.context.deep_context.memories:
+            print("\n[i] Aucune mémoire long terme enregistrée.\n")
+            return
+
+        try:
+            results = self.context.deep_context.search(args, self.api, top_k=5)
+        except Exception as e:
+            print(f"\n[!] Erreur lors de la recherche : {e}\n")
+            return
+
+        if not results:
+            print("\n[i] Aucun résultat pertinent trouvé.\n")
+            return
+
+        print(f"\n── Résultats RAG pour \"{args}\" ({len(results)} trouvés) ──")
+        for i, (score, mem) in enumerate(results):
+            role_icon = {"user": "👤", "assistant": "🤖"}.get(mem.role, "❓")
+            content_preview = mem.content[:100].replace("\n", "↵")
+            if len(mem.content) > 100:
+                content_preview += "..."
+            print(f"  {i+1}. {role_icon} [{mem.role}] (score: {score:.4f}) {content_preview}")
+        print()
+
     # ── Registre des commandes ───────────────────────────────────────
 
     _commands = {
@@ -291,6 +353,7 @@ class SensAI:
         "/payload":  _cmd_payload,
         "/clear":    _cmd_clear,
         "/new":      _cmd_new,
+        "/recall":   _cmd_recall,
     }
 
 

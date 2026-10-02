@@ -51,13 +51,13 @@ class Context(Base):
         self.deep_context = DeepContext(vector_limit=4096)
         logger.debug(f"Initialized Context for profile_id={profile_id} with limit={context_limit}")
 
-    def add(self, message: Message):
+    def add(self, message: Message, api_client=None):
         """Ajoute un message à la mémoire court terme. Bascule vers la mémoire long terme si on dépasse la limite."""
         self.messages.append(message)
         logger.info(f"[Context] Ajout d'un message ({message.role}) — Taille actuelle : {len(self.messages)}/{self.context_limit}")
-        self._check_limit_and_save()
+        self._check_limit_and_save(api_client)
 
-    def _check_limit_and_save(self):
+    def _check_limit_and_save(self, api_client=None):
         """Vérifie la limite. Si dépassée, sauvegarde les plus anciens dans DeepContext et les retire."""
         if len(self.messages) > self.context_limit:
             overflow_count = len(self.messages) - self.context_limit
@@ -68,7 +68,7 @@ class Context(Base):
                 logger.info("[Context] Création à la volée du DeepContext (non trouvé en base).")
                 self.deep_context = DeepContext(vector_limit=4096)
 
-            self.deep_context.save(overflow_messages)
+            self.deep_context.save(overflow_messages, api_client)
             self.messages = MessageList(self.messages[overflow_count:])
             logger.debug(f"[Context] Nettoyage effectué. Nouvelle taille : {len(self.messages)}")
 
