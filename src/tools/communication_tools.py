@@ -27,8 +27,11 @@ def send_email(recipient_to: str, recipient_from: str, message: str) -> bool:
         subject = ">> My Subject"
         msg = MIMEText(message)
         msg['Subject'] = Header(subject)
-        s = smtplib.SMTP('localhost')
-        s.sendmail(recipient_from, recipient_to, msg.as_string())
+        mail_server = smtplib.SMTP('localhost')
+        mail_server.ehlo()
+        mail_server.starttls()
+        mail_server.ehlo()
+        mail_server.sendmail(recipient_from, recipient_to, msg.as_string())
         return True
     except Exception:
         return False
