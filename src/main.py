@@ -72,15 +72,6 @@ class SensAI:
 
         return self
 
-llm.ask(user_prompt)
-
-    llm_messages = MessageList([
-        Message(role=m.role, content=m.content, images=m.images)
-        for m in user_context.messages
-    ])
-
-    llm = Chat(model=hf_model, api=api, messages=llm_messages)
-
     # ── Échange unique ───────────────────────────────────────────────
 
     def chat(self, prompt: str) -> str:
@@ -371,16 +362,11 @@ llm.ask(user_prompt)
 # ── Point d'entrée ───────────────────────────────────────────────────
 
 if __name__ == "__main__":
-    logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s")
+    logging.basicConfig(
+        level=logging.INFO,
+        format="%(asctime)s - %(name)s - %(levelname)s - %(message)s"
+    )
+
     sensai = SensAI()
     sensai.load_or_create_profile()
     sensai.repl()
-ollama_response = llm.last_response
-
-if ollama_response:
-    print("\n--- OBJET CHATRESPONSE SAUVEGARDÉ ---")
-    print(f"Modèle: {ollama_response.model}")
-    print(f"Tokens évalués: {ollama_response.eval_count}")
-    print(f"Temps de génération: {ollama_response.eval_duration / 1e9:.2f} s")
-else:
-    print("\nErreur: Flux interrompu avant la fin, réponse incomplète.")
