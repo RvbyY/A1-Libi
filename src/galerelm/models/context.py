@@ -1,7 +1,7 @@
 """
-Context — Mémoire à Court Terme (Relationnelle).
-Maintient le fil exact de la conversation (historique brut).
-Limité à X messages pour ne pas surcharger la fenêtre de contexte.
+Module context.py
+Gère la mémoire à court terme (relationnelle) de la conversation.
+Pour une documentation détaillée, voir context.md.
 """
 import logging
 from typing import Optional
