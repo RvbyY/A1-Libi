@@ -1,9 +1,7 @@
 """
-Chat — Objet métier pour construire et exécuter une requête de chat vers un LLM.
-Ce n'est PAS un modèle ORM. Il est éphémère et sert uniquement à :
-  1. Construire le payload JSON pour l'API
-  2. Streamer la réponse en temps réel
-  3. Stocker la dernière réponse (ChatResponse)
+Module chat.py
+Contient la logique de construction et d'exécution d'une requête de chat vers un LLM.
+Pour une documentation détaillée, voir chat.md.
 """
 import logging
 from typing import Literal, Optional, Union
@@ -24,6 +22,7 @@ class Chat:
     """
     Objet éphémère qui encapsule une requête de chat.
     Construit le payload, exécute le stream, et stocke la réponse.
+    (Voir chat.md pour la documentation complète).
     """
 
     def __init__(
@@ -54,7 +53,6 @@ class Chat:
         self.request_format = request_format
         self.last_response: Optional[ChatResponse] = None
 
-        # Injecte le prompt système s'il est fourni
         if system_prompt:
             self._set_system_prompt(system_prompt)
 
