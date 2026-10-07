@@ -28,7 +28,10 @@ class TaskRunner:
                     print(f"\nSensAI [scheduled] : {response}\n")
                     print("Vous: ", end="", flush=True)
 
-                    task_manager.mark_completed(task)
+                    if task.recurrence:
+                        task_manager.reschedule_recurring_task(task)
+                    else:
+                        task_manager.mark_completed(task)
 
                 except Exception as exc:
                     logger.exception(
