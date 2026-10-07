@@ -1,7 +1,7 @@
 """
-DeepContext — Mémoire à Long Terme (Vectorielle).
-Stocke les faits et l'historique sous forme de vecteurs pour une recherche RAG.
-Utilise l'API Ollama /api/embed pour générer les embeddings.
+Module deep_context.py
+Gère la mémoire à long terme (vectorielle) et le processus RAG.
+Pour une documentation détaillée, voir deep_context.md.
 """
 import math
 import logging
