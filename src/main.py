@@ -13,6 +13,11 @@ from sqlalchemy.orm import sessionmaker
 from src.galerelm.models import Base, Chat, Message, Context, Profile
 from src.rapideAPI import RapideAPI
 
+from datetime import datetime, timedelta
+from src.scheduler.task_manager import TaskManager
+import threading
+from src.scheduler.runner import TaskRunner
+
 logger = logging.getLogger("sensai")
 
 
@@ -35,6 +40,8 @@ class SensAI:
         Base.metadata.create_all(self.engine)
         self.SessionLocal = sessionmaker(bind=self.engine)
         self.session = self.SessionLocal()
+        self.task_manager = TaskManager(self.session)
+        self.task_runner = TaskRunner(self.SessionLocal, executor=self.chat,)
         logger.info("Base de données initialisée avec succès.")
 
         # ── API ──────────────────────────────────────────────────────
@@ -157,6 +164,13 @@ class SensAI:
         print("Tapez /help pour voir les commandes disponibles.\n")
 
         logger.info("Démarrage de la boucle interactive de discussion.")
+
+        runner_thread = threading.Thread(
+            target=self.task_runner.run_forever,
+            daemon=True,
+        )
+        
+        runner_thread.start()
 
         while True:
             user_prompt = input("Vous : ").strip()
@@ -341,7 +355,57 @@ class SensAI:
             print(f"  {i+1}. {role_icon} [{mem.role}] (score: {score:.4f}) {content_preview}")
         print()
 
-    # ── Registre des commandes ───────────────────────────────────────
+    def _cmd_schedule(self, args: str):
+        """Planifier une tâche. Usage: /schedule at HH:MM <prompt>"""
+
+        if not args:
+            print("\n[!] Usage : /schedule at HH:MM <prompt>\n")
+            return
+
+        parts = args.split(maxsplit=2)
+
+        if len(parts) < 3 or parts[0].lower() != "at":
+            print("\n[!] Usage : /schedule at HH:MM <prompt>\n")
+            return
+
+        time_str = parts[1]
+        prompt = parts[2]
+
+        try:
+            hour, minute = map(int, time_str.split(":"))
+        except ValueError:
+            print("\n[!] Heure invalide. Format attendu : HH:MM\n")
+            return
+
+        if not (0 <= hour <= 23 and 0 <= minute <= 59):
+            print("\n[!] Heure invalide. Format attendu : HH:MM\n")
+            return
+
+        now = datetime.now()
+
+        scheduled_at = now.replace(
+            hour=hour,
+            minute=minute,
+            second=0,
+            microsecond=0,
+        )
+
+        if scheduled_at <= now:
+            scheduled_at += timedelta(days=1)
+
+        task = self.task_manager.create_task(
+            profile_id=self.profile.id,
+            prompt=prompt,
+            scheduled_at=scheduled_at,
+        )
+
+        print(
+            f"\n[✓] Tâche planifiée pour "
+            f"{task.scheduled_at.strftime('%Y-%m-%d %H:%M')} : "
+            f"{task.prompt}\n"
+        )
+
+# ── Registre des commandes ───────────────────────────────────────
 
     _commands = {
         "/help":     _cmd_help,
@@ -356,6 +420,7 @@ class SensAI:
         "/clear":    _cmd_clear,
         "/new":      _cmd_new,
         "/recall":   _cmd_recall,
+        "/schedule": _cmd_schedule,
     }
 
 

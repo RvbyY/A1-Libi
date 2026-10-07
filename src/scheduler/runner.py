@@ -1,29 +1,44 @@
 import logging
+import time
 
 from src.scheduler.task_manager import TaskManager
 
 logger = logging.getLogger("sensai.scheduler")
-    
+
 
 class TaskRunner:
-    def __init__(self, session):
-        self.task_manager = TaskManager(session)
+    def __init__(self, session_factory, executor):
+        self.session_factory = session_factory
+        self.executor = executor
 
     def run_due_tasks(self):
-        tasks = self.task_manager.get_due_tasks()
+        session = self.session_factory()
 
-        for task in tasks:
-            try:
-                logger.info(
-                    f"[Scheduler] Exécution de la tâche {task.id}: {task.prompt}"
-                )
+        try:
+            task_manager = TaskManager(session)
+            tasks = task_manager.get_due_tasks()
 
-                print(f"[ScheduledTask] {task.prompt}")
+            for task in tasks:
+                try:
+                    logger.info(
+                        f"[Scheduler] Exécution de la tâche {task.id}: {task.prompt}"
+                    )
 
-                self.task_manager.mark_completed(task)
+                    response = self.executor(task.prompt)
+                    print(f"\nSensAI [scheduled] : {response}")
 
-            except Exception as exc:
-                logger.exception(
-                    f"[Scheduler] Échec de la tâche {task.id}: {exc}"
-                )
-                self.task_manager.mark_failed(task)
+                    task_manager.mark_completed(task)
+
+                except Exception as exc:
+                    logger.exception(
+                        f"[Scheduler] Échec de la tâche {task.id}: {exc}"
+                    )
+                    task_manager.mark_failed(task)
+
+        finally:
+            session.close()
+
+    def run_forever(self, interval: int = 5):
+        while True:
+            self.run_due_tasks()
+            time.sleep(interval)
