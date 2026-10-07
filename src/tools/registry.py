@@ -1,7 +1,7 @@
-from ITools import ToolResult, ToolContext
+from .ITools import ToolResult, ToolContext, ToolsInterface
 
 class ToolRegistry:
-    def __init__(self, tools: list[ToolContext]) -> None:
+    def __init__(self, tools: list[ToolsInterface]) -> None:
         self._tools = {tool.name: tool for tool in tools}
 
     def definition(self) -> list[dict]:
@@ -10,7 +10,7 @@ class ToolRegistry:
                 "type": "function",
                 "function": {
                     "name": tool.name,
-                    "decription": tool.description,
+                    "description": tool.description,
                     "parameters": tool.parameters,
                 },
             }
