@@ -8,11 +8,10 @@ default_registry() construit le registre avec toutes les commandes intégrées.
 from src.commands.base import Command, CommandResult
 from src.commands.registry import CommandRegistry
 from src.commands.general import HelpCommand, QuitCommand
-from src.commands.debug import (
-    ProfileCommand, ContextCommand, MessagesCommand, MemoriesCommand, PayloadCommand,
-)
+from src.commands.debug import (ProfileCommand, ContextCommand, MessagesCommand, MemoriesCommand, PayloadCommand,)
 from src.commands.session import ClearCommand, NewCommand
 from src.commands.memory import RecallCommand
+from src.commands.schedule import ScheduleCommand
 
 BUILTIN_COMMANDS: tuple[type[Command], ...] = (
     HelpCommand,
@@ -24,6 +23,7 @@ BUILTIN_COMMANDS: tuple[type[Command], ...] = (
     PayloadCommand,
     RecallCommand,
     ClearCommand,
+    ScheduleCommand,
     NewCommand,
 )
 
@@ -40,5 +40,5 @@ __all__ = [
     "Command", "CommandResult", "CommandRegistry", "default_registry", "BUILTIN_COMMANDS",
     "HelpCommand", "QuitCommand",
     "ProfileCommand", "ContextCommand", "MessagesCommand", "MemoriesCommand", "PayloadCommand",
-    "RecallCommand", "ClearCommand", "NewCommand",
+    "RecallCommand", "ClearCommand", "ScheduleCommand", "NewCommand",
 ]

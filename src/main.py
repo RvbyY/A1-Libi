@@ -12,6 +12,10 @@ from src.galerelm.models import Base, Chat, Message, Context, Profile
 from src.rapideAPI import RapideAPI
 from src.commands import CommandRegistry, CommandResult, default_registry
 
+from src.scheduler.task_manager import TaskManager
+import threading
+from src.scheduler.runner import TaskRunner
+
 logger = logging.getLogger("sensai")
 
 
@@ -35,6 +39,8 @@ class SensAI:
         Base.metadata.create_all(self.engine)
         self.SessionLocal = sessionmaker(bind=self.engine)
         self.session = self.SessionLocal()
+        self.task_manager = TaskManager(self.session)
+        self.task_runner = TaskRunner(self.SessionLocal, executor=self.chat,)
         logger.info("Base de données initialisée avec succès.")
 
         # ── API ──────────────────────────────────────────────────────
@@ -79,8 +85,6 @@ class SensAI:
             logger.info(f"Contexte chargé. Messages en mémoire : {len(self.context.messages)}")
 
         return self
-
-
 
     # ── Échange unique ───────────────────────────────────────────────
 
@@ -168,6 +172,13 @@ class SensAI:
 
         logger.info("Démarrage de la boucle interactive de discussion.")
 
+        runner_thread = threading.Thread(
+            target=self.task_runner.run_forever,
+            daemon=True,
+        )
+        
+        runner_thread.start()
+
         while True:
             user_prompt = input("Vous : ").strip()
 
@@ -213,12 +224,14 @@ class SensAI:
             else:
                 print("[!] Erreur: Aucune réponse retournée par le modèle.")
 
-
 # ── Point d'entrée ───────────────────────────────────────────────────
 
 if __name__ == "__main__":
-    logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s")
+    logging.basicConfig(
+        level=logging.INFO,
+        format="%(asctime)s - %(name)s - %(levelname)s - %(message)s"
+    )
+
     sensai = SensAI()
     sensai.load_or_create_profile()
     sensai.repl()
-
