@@ -78,15 +78,6 @@ class SensAI:
 
         return self
 
-llm.ask(user_prompt)
-
-    llm_messages = MessageList([
-        Message(role=m.role, content=m.content, images=m.images)
-        for m in user_context.messages
-    ])
-
-    llm = Chat(model=hf_model, api=api, messages=llm_messages)
-
     # ── Échange unique ───────────────────────────────────────────────
 
     def chat(self, prompt: str) -> str:
@@ -158,13 +149,9 @@ llm.ask(user_prompt)
             memory_lines.append(f"- [{mem.role}] {mem.content}")
 
         augmented = (
-            f"{base_instructions}
-
-"
-            f"Voici des informations pertinentes issues de conversations précédentes :
-"
-            + "
-".join(memory_lines)
+            f"{base_instructions}\n\n"
+            f"Voici des informations pertinentes issues de conversations précédentes :\n"
+            + "\n".join(memory_lines)
         )
         logger.info(f"[RAG] {len(results)} mémoires injectées dans le prompt système.")
         return augmented
