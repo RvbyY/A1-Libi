@@ -1,9 +1,9 @@
+from src.config import config
 """
 SensAI — Point d'entrée principal du framework LLM.
 """
 import os
 from galerelm.models.chat import Chat, Options, Message, MessageList
-from dotenv import load_dotenv
 from rapideAPI.client import RapideAPI
 import logging
 
@@ -24,10 +24,10 @@ class SensAI:
     - Exécution des échanges avec le LLM
     """
 
-    def __init__(self, db_url: str = "sqlite:///galerelm.db", model: str = None, api_url: str = None):
-        load_dotenv()
-        self.model = model or os.getenv("HF_MODEL")
-        api_url = api_url or os.getenv("OLLAMA_HOST")
+    def __init__(self, db_url: str = None, model: str = None, api_url: str = None):
+        db_url = db_url or config.DB_URL
+        self.model = model or config.DEFAULT_MODEL
+        api_url = api_url or config.OLLAMA_HOST
 
         # ── Base de données ──────────────────────────────────────────
         logger.info(f"Connexion à la base de données ({db_url})...")
@@ -55,14 +55,14 @@ class SensAI:
             logger.info(f"Création d'un nouveau profil ({email}).")
             self.profile = Profile(name=name, email=email, instructions=instructions)
             from src.galerelm.models.deep_context import DeepContext
-            self.profile.deep_context = DeepContext(vector_limit=4096)
+            self.profile.deep_context = DeepContext(vector_limit=config.DEEP_CONTEXT_LIMIT)
             self.session.add(self.profile)
             self.session.commit()
         else:
             logger.info(f"Profil trouvé : {self.profile.name} ({self.profile.email})")
             if not self.profile.deep_context:
                 from src.galerelm.models.deep_context import DeepContext
-                self.profile.deep_context = DeepContext(vector_limit=4096)
+                self.profile.deep_context = DeepContext(vector_limit=config.DEEP_CONTEXT_LIMIT)
                 self.session.commit()
 
         # Charge le contexte le plus récent pour ce profil
@@ -70,7 +70,7 @@ class SensAI:
 
         if not self.context:
             logger.info("Aucun contexte trouvé. Création d'un nouveau contexte.")
-            self.context = Context(profile_id=self.profile.id, context_limit=10)
+            self.context = Context(profile_id=self.profile.id, context_limit=config.CONTEXT_LIMIT)
             self.session.add(self.context)
             self.session.commit()
         else:
@@ -330,7 +330,7 @@ llm.ask(user_prompt)
 
     def _cmd_new(self, args: str):
         """Créer un nouveau contexte vierge."""
-        self.context = Context(profile_id=self.profile.id, context_limit=10)
+        self.context = Context(profile_id=self.profile.id, context_limit=config.CONTEXT_LIMIT)
         self.session.add(self.context)
         self.session.commit()
         print("\n[✓] Nouveau contexte créé. Historique vierge.\n")

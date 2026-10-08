@@ -1,3 +1,4 @@
+from src.config import config
 import logging
 from typing import Generator, List, Optional
 
@@ -18,7 +19,8 @@ class SensAIWrapper:
     Thread-safe : chaque requête utilise sa propre session en base.
     """
 
-    def __init__(self, db_url: str = "sqlite:///galerelm.db"):
+    def __init__(self, db_url: str = None):
+        db_url = db_url or config.DB_URL
         self.core = SensAI(db_url=db_url)
         logger.info("SensAIWrapper initialisé avec succès (Typage Strict, Thread-Safe).")
 
@@ -44,7 +46,7 @@ class SensAIWrapper:
                 session.add(profile)
                 session.commit()
                 
-                context = Context(profile_id=profile.id, context_limit=10)
+                context = Context(profile_id=profile.id, context_limit=config.CONTEXT_LIMIT)
                 session.add(context)
                 session.commit()
                 
@@ -77,7 +79,7 @@ class SensAIWrapper:
     def start_new_chat(self, email: str) -> ContextResponse:
         with self.core.SessionLocal() as session:
             profile = self._get_profile_or_raise(session, email)
-            new_context = Context(profile_id=profile.id, context_limit=10)
+            new_context = Context(profile_id=profile.id, context_limit=config.CONTEXT_LIMIT)
             session.add(new_context)
             session.commit()
             return ContextResponse(new_context.id, new_context.profile_id, new_context.context_limit)
