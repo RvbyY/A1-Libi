@@ -156,19 +156,19 @@ class SensAIWrapper:
         profile = self._get_profile_or_raise(email)
         context = self._get_context_or_raise(profile.id)
         
-        if not context.deep_context or not context.deep_context.memories:
+        if not profile.deep_context or not profile.deep_context.memories:
             return []
             
-        return [MemoryResponse(m.id, m.role, m.content) for m in context.deep_context.memories]
+        return [MemoryResponse(m.id, m.role, m.content) for m in profile.deep_context.memories]
 
     def search_memories(self, email: str, query: str, top_k: int = 5) -> List[MemoryResponse]:
         profile = self._get_profile_or_raise(email)
         context = self._get_context_or_raise(profile.id)
         
-        if not context.deep_context or not context.deep_context.memories:
+        if not profile.deep_context or not profile.deep_context.memories:
             return []
 
-        results = context.deep_context.search(query, self.core.api, top_k=top_k)
+        results = profile.deep_context.search(query, self.core.api, top_k=top_k)
         return [MemoryResponse(mem.id, mem.role, mem.content, score=score) for score, mem in results]
 
     def delete_memory(self, memory_id: int) -> bool:

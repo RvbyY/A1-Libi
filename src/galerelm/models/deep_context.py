@@ -36,7 +36,7 @@ class DeepContext(Base):
     __tablename__ = "deep_contexts"
 
     id: int = Column(Integer, primary_key=True, autoincrement=True)
-    context_id: int = Column(Integer, ForeignKey("contexts.id"), nullable=False)
+    profile_id: str = Column(String, ForeignKey("profiles.id"), nullable=False)
     vector_limit: int = Column(Integer, default=4096)
     embed_model: str = Column(String, default=DEFAULT_EMBED_MODEL)
 

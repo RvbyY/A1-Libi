@@ -1,8 +1,7 @@
 import pytest
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
-from src.galerelm.models.chat import Base, GenerateRequest, Options, GenerateResponse
-from src.galerelm.models.profile import Profile
+from src.galerelm.models import Base, Profile, Context, Message, DeepContext, LongTermMemory
 
 def test_sqlalchemy_mappings():
     # Création d'une base de données en mémoire pour tester les schémas
@@ -25,33 +24,20 @@ def test_sqlalchemy_mappings():
     assert fetched_prof is not None
     assert fetched_prof.name == "DB User"
 
-    # Test d'insertion d'un GenerateRequest
-    opts = Options(seed=123, temperature=0.5, top_k=10, top_p=0.9, min_p=0.0, stop=["\n"], num_ctx=512, num_predict=50)
-    req = GenerateRequest(
-        model="db_model",
-        prompt="Hello DB",
-        suffix=None,
-        images=[],
-        request_format="json",
-        system=None,
-        stream=True,
-        think=False,
-        raw=False,
-        keep_alive="1m",
-        logprobs=False,
-        top_logprobs=None,
-        options=opts
-    )
-    
-    session.add(req)
+    # Test d'insertion d'un Context
+    ctx = Context(profile_id=prof.id, context_limit=10)
+    session.add(ctx)
     session.commit()
+    assert ctx.id is not None
     
-    # On vérifie que l'ID a bien été généré (preuve que c'est une table SQL)
-    assert req.id is not None
-    assert req.options.id is not None
+    # Test d'insertion d'un Message dans le Context
+    msg = Message(role="user", content="Hello DB")
+    msg.context_id = ctx.id
+    session.add(msg)
+    session.commit()
+    assert msg.id is not None
     
-    # On vérifie la relation GenerateRequest -> Options
-    fetched_req = session.query(GenerateRequest).filter_by(model="db_model").first()
-    assert fetched_req is not None
-    assert fetched_req.prompt == "Hello DB"
-    assert fetched_req.options.seed == 123
+    # Vérification des relations
+    fetched_ctx = session.query(Context).filter_by(id=ctx.id).first()
+    assert len(fetched_ctx.messages) == 1
+    assert fetched_ctx.messages[0].content == "Hello DB"

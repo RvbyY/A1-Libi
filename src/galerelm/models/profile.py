@@ -23,6 +23,7 @@ class Profile(Base):
     instructions: str = Column(Text, nullable=False)
 
     contexts = relationship("Context", backref="profile", cascade="all, delete-orphan")
+    deep_context = relationship("DeepContext", backref="profile", uselist=False, cascade="all, delete-orphan")
 
     def __init__(self, name: str, email: str, instructions: str):
         self.id = str(uuid.uuid4())

@@ -54,10 +54,16 @@ class SensAI:
         if not self.profile:
             logger.info(f"Création d'un nouveau profil ({email}).")
             self.profile = Profile(name=name, email=email, instructions=instructions)
+            from src.galerelm.models.deep_context import DeepContext
+            self.profile.deep_context = DeepContext(vector_limit=4096)
             self.session.add(self.profile)
             self.session.commit()
         else:
             logger.info(f"Profil trouvé : {self.profile.name} ({self.profile.email})")
+            if not self.profile.deep_context:
+                from src.galerelm.models.deep_context import DeepContext
+                self.profile.deep_context = DeepContext(vector_limit=4096)
+                self.session.commit()
 
         # Charge le contexte le plus récent pour ce profil
         self.context = self.session.query(Context).filter_by(profile_id=self.profile.id).first()
@@ -131,11 +137,11 @@ llm.ask(user_prompt)
         """
         base_instructions = self.profile.instructions
 
-        if not self.context.deep_context or not self.context.deep_context.memories:
+        if not self.profile.deep_context or not self.profile.deep_context.memories:
             return base_instructions
 
         try:
-            results = self.context.deep_context.search(query, self.api, top_k=3)
+            results = self.profile.deep_context.search(query, self.api, top_k=3)
         except Exception as e:
             logger.warning(f"[RAG] Recherche de mémoires échouée : {e}")
             return base_instructions
@@ -256,11 +262,11 @@ llm.ask(user_prompt)
 
     def _cmd_memories(self, args: str):
         """Lister les mémoires long terme."""
-        if not self.context.deep_context or not self.context.deep_context.memories:
+        if not self.profile.deep_context or not self.profile.deep_context.memories:
             print("\n[i] Aucune mémoire long terme enregistrée.\n")
             return
 
-        memories = self.context.deep_context.memories
+        memories = self.profile.deep_context.memories
         print(f"\n── Mémoires Long Terme ({len(memories)} entrées) ──")
         for i, mem in enumerate(memories):
             role_icon = {"user": "👤", "assistant": "🤖"}.get(mem.role, "❓")
@@ -283,7 +289,7 @@ llm.ask(user_prompt)
     def _cmd_context(self, args: str):
         """Afficher les stats du contexte."""
         ctx = self.context
-        mem_count = len(ctx.deep_context.memories) if ctx.deep_context else 0
+        mem_count = len(self.profile.deep_context.memories) if self.profile.deep_context else 0
         print(f"\n── Contexte ──")
         print(f"  ID              : {ctx.id}")
         print(f"  Profile ID      : {ctx.profile_id}")
@@ -327,12 +333,12 @@ llm.ask(user_prompt)
             print("\n[!] Usage : /recall <votre requête>\n")
             return
 
-        if not self.context.deep_context or not self.context.deep_context.memories:
+        if not self.profile.deep_context or not self.profile.deep_context.memories:
             print("\n[i] Aucune mémoire long terme enregistrée.\n")
             return
 
         try:
-            results = self.context.deep_context.search(args, self.api, top_k=5)
+            results = self.profile.deep_context.search(args, self.api, top_k=5)
         except Exception as e:
             print(f"\n[!] Erreur lors de la recherche : {e}\n")
             return
