@@ -130,18 +130,22 @@ llm.ask(user_prompt)
 
         return full_response
 
-    def _build_augmented_prompt(self, query: str) -> str:
+    def _build_augmented_prompt(self, query: str, profile=None) -> str:
         """
         Construit le prompt système enrichi avec les mémoires long terme pertinentes (RAG).
         Si aucune mémoire n'est trouvée, retourne les instructions brutes du profil.
         """
-        base_instructions = self.profile.instructions
+        prof = profile or getattr(self, 'profile', None)
+        if not prof:
+            return ""
 
-        if not self.profile.deep_context or not self.profile.deep_context.memories:
+        base_instructions = prof.instructions
+
+        if not prof.deep_context or not prof.deep_context.memories:
             return base_instructions
 
         try:
-            results = self.profile.deep_context.search(query, self.api, top_k=3)
+            results = prof.deep_context.search(query, self.api, top_k=3)
         except Exception as e:
             logger.warning(f"[RAG] Recherche de mémoires échouée : {e}")
             return base_instructions
@@ -154,9 +158,13 @@ llm.ask(user_prompt)
             memory_lines.append(f"- [{mem.role}] {mem.content}")
 
         augmented = (
-            f"{base_instructions}\n\n"
-            f"Voici des informations pertinentes issues de conversations précédentes :\n"
-            + "\n".join(memory_lines)
+            f"{base_instructions}
+
+"
+            f"Voici des informations pertinentes issues de conversations précédentes :
+"
+            + "
+".join(memory_lines)
         )
         logger.info(f"[RAG] {len(results)} mémoires injectées dans le prompt système.")
         return augmented

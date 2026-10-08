@@ -94,27 +94,25 @@ class SensAIWrapper:
 
     # ── 3. Inférence & Discussion ────────────────────────────────────
 
-    def _setup_chat_environment(self, email: str, prompt: str) -> Chat:
+    def _setup_chat_environment(self, email: str, prompt: str) -> tuple[Chat, Context]:
         profile = self._get_profile_or_raise(email)
         context = self._get_context_or_raise(profile.id)
-
-        self.core.profile = profile
-        self.core.context = context
 
         context.add(Message(role="user", content=prompt), api_client=self.core.api)
         self.core.session.commit()
 
-        system_prompt = self.core._build_augmented_prompt(prompt)
+        system_prompt = self.core._build_augmented_prompt(prompt, profile=profile)
 
-        return Chat(
+        chat = Chat(
             model=self.core.model,
             api=self.core.api,
             messages=context.get_messages_copy(),
             system_prompt=system_prompt,
         )
+        return chat, context
 
     def chat_stream(self, email: str, prompt: str) -> Generator[str, None, None]:
-        llm = self._setup_chat_environment(email, prompt)
+        llm, context = self._setup_chat_environment(email, prompt)
         
         accumulated_response = ""
         for token in llm.execute_stream():
@@ -123,21 +121,21 @@ class SensAIWrapper:
 
         if llm.last_response and llm.last_response.message:
             assistant_msg = llm.last_response.message
-            self.core.context.add(
+            context.add(
                 Message(role="assistant", content=assistant_msg.content), 
                 api_client=self.core.api
             )
             self.core.session.commit()
 
     def chat_blocking(self, email: str, prompt: str) -> ChatCompletionResponse:
-        llm = self._setup_chat_environment(email, prompt)
+        llm, context = self._setup_chat_environment(email, prompt)
         
         for _ in llm.execute_stream():
             pass
 
         if llm.last_response and llm.last_response.message:
             assistant_msg = llm.last_response.message
-            self.core.context.add(
+            context.add(
                 Message(role="assistant", content=assistant_msg.content), 
                 api_client=self.core.api
             )
