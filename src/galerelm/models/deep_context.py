@@ -5,6 +5,7 @@ Pour une documentation détaillée, voir deep_context.md.
 """
 import math
 import logging
+from src.config import config
 
 from sqlalchemy import Column, Integer, String, ForeignKey, JSON, Text
 from sqlalchemy.orm import relationship
@@ -15,7 +16,7 @@ from src.galerelm.models.message import MessageList
 logger = logging.getLogger("galerelm.models.deep_context")
 
 # ── Modèle d'embedding par défaut ────────────────────────────────────
-DEFAULT_EMBED_MODEL = "nomic-embed-text"
+DEFAULT_EMBED_MODEL = config.EMBED_MODEL
 
 
 # ── Calcul de similarité cosinus (pur Python, sans numpy) ────────────
@@ -36,8 +37,8 @@ class DeepContext(Base):
     __tablename__ = "deep_contexts"
 
     id: int = Column(Integer, primary_key=True, autoincrement=True)
-    context_id: int = Column(Integer, ForeignKey("contexts.id"), nullable=False)
-    vector_limit: int = Column(Integer, default=4096)
+    profile_id: str = Column(String, ForeignKey("profiles.id"), nullable=False)
+    vector_limit: int = Column(Integer, default=config.DEEP_CONTEXT_LIMIT)
     embed_model: str = Column(String, default=DEFAULT_EMBED_MODEL)
 
     memories = relationship("LongTermMemory", backref="deep_context", cascade="all, delete-orphan")
