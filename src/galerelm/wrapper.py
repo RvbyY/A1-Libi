@@ -30,8 +30,11 @@ class SensAIWrapper:
             raise ValueError(f"Profil introuvable pour l'email: {email}")
         return profile
 
-    def _get_context_or_raise(self, session, profile_id: str) -> Context:
-        context = session.query(Context).filter_by(profile_id=profile_id).order_by(Context.id.desc()).first()
+    def _get_context_or_raise(self, session, profile_id: str, context_id: int = None) -> Context:
+        query = session.query(Context).filter_by(profile_id=profile_id)
+        if context_id is not None:
+            query = query.filter_by(id=context_id)
+        context = query.order_by(Context.id.desc()).first()
         if not context:
             raise ValueError(f"Contexte introuvable pour le profil: {profile_id}")
         return context
@@ -84,11 +87,17 @@ class SensAIWrapper:
             session.commit()
             return ContextResponse(new_context.id, new_context.profile_id, new_context.context_limit)
 
-    def get_chat_history(self, email: str) -> List[MessageResponse]:
+    def get_chat_history(self, email: str, context_id: int = None) -> List[MessageResponse]:
         with self.core.SessionLocal() as session:
             profile = self._get_profile_or_raise(session, email)
-            context = self._get_context_or_raise(session, profile.id)
+            context = self._get_context_or_raise(session, profile.id, context_id)
             return [MessageResponse(m.role, m.content) for m in context.messages]
+
+    def list_chats(self, email: str) -> List[ContextResponse]:
+        with self.core.SessionLocal() as session:
+            profile = self._get_profile_or_raise(session, email)
+            contexts = session.query(Context).filter_by(profile_id=profile.id).order_by(Context.id.desc()).all()
+            return [ContextResponse(c.id, c.profile_id, c.context_limit) for c in contexts]
 
     def clear_chat(self, email: str) -> bool:
         with self.core.SessionLocal() as session:
@@ -100,9 +109,9 @@ class SensAIWrapper:
 
     # ── 3. Inférence & Discussion ────────────────────────────────────
 
-    def _setup_chat_environment(self, session, email: str, prompt: str) -> tuple[Chat, Context]:
+    def _setup_chat_environment(self, session, email: str, prompt: str, context_id: int = None) -> tuple[Chat, Context]:
         profile = self._get_profile_or_raise(session, email)
-        context = self._get_context_or_raise(session, profile.id)
+        context = self._get_context_or_raise(session, profile.id, context_id)
 
         context.add(Message(role="user", content=prompt), api_client=self.core.api)
         session.commit()
@@ -117,9 +126,9 @@ class SensAIWrapper:
         )
         return chat, context
 
-    def chat_stream(self, email: str, prompt: str) -> Generator[str, None, None]:
+    def chat_stream(self, email: str, prompt: str, context_id: int = None) -> Generator[str, None, None]:
         with self.core.SessionLocal() as session:
-            llm, context = self._setup_chat_environment(session, email, prompt)
+            llm, context = self._setup_chat_environment(session, email, prompt, context_id)
             
             accumulated_response = ""
             for token in llm.execute_stream():
