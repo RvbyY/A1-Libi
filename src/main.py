@@ -6,12 +6,18 @@ import os
 from galerelm.models.chat import Chat, Options, Message, MessageList
 from rapideAPI.client import RapideAPI
 import logging
+from dotenv import load_dotenv
 
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 
 from src.galerelm.models import Base, Chat, Message, Context, Profile
 from src.rapideAPI import RapideAPI
+from src.commands import CommandRegistry, CommandResult, default_registry
+
+from src.scheduler.task_manager import TaskManager
+import threading
+from src.scheduler.runner import TaskRunner
 
 logger = logging.getLogger("sensai")
 
@@ -35,10 +41,15 @@ class SensAI:
         Base.metadata.create_all(self.engine)
         self.SessionLocal = sessionmaker(bind=self.engine)
         self.session = self.SessionLocal()
+        self.task_manager = TaskManager(self.session)
+        self.task_runner = TaskRunner(self.SessionLocal, executor=self.chat,)
         logger.info("Base de données initialisée avec succès.")
 
         # ── API ──────────────────────────────────────────────────────
         self.api = RapideAPI(base_url=api_url)
+
+        # ── Commandes du terminal ────────────────────────────────────
+        self.commands = commands if commands is not None else default_registry()
 
         # ── Profil & Contexte ────────────────────────────────────────
         self.profile: Profile = None
@@ -87,7 +98,12 @@ class SensAI:
                 self.session.commit()
 
         # Charge le contexte le plus récent pour ce profil
-        self.context = self.session.query(Context).filter_by(profile_id=self.profile.id).first()
+        self.context = (
+            self.session.query(Context)
+            .filter_by(profile_id=self.profile.id)
+            .order_by(Context.id.desc())
+            .first()
+        )
 
         if not self.context:
             logger.info("Aucun contexte trouvé. Création d'un nouveau contexte.")
@@ -189,6 +205,13 @@ class SensAI:
 
         logger.info("Démarrage de la boucle interactive de discussion.")
 
+        runner_thread = threading.Thread(
+            target=self.task_runner.run_forever,
+            daemon=True,
+        )
+        
+        runner_thread.start()
+
         while True:
             user_prompt = input("Vous : ").strip()
 
@@ -196,17 +219,9 @@ class SensAI:
                 continue
 
             # ── Gestion des commandes (/command) ─────────────────────
-            if user_prompt.startswith("/"):
-                parts = user_prompt.split(maxsplit=1)
-                command = parts[0].lower()
-                args = parts[1] if len(parts) > 1 else ""
-
-                if command in self._commands:
-                    should_quit = self._commands[command](self, args)
-                    if should_quit:
-                        break
-                else:
-                    print(f"[!] Commande inconnue : {command}. Tapez /help pour la liste.\n")
+            if self.commands.is_command(user_prompt):
+                if self.commands.dispatch(user_prompt, self) is CommandResult.QUIT:
+                    break
                 continue
 
             # ── Échange normal avec le LLM ───────────────────────────
@@ -393,16 +408,11 @@ class SensAI:
 # ── Point d'entrée ───────────────────────────────────────────────────
 
 if __name__ == "__main__":
-    logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s")
+    logging.basicConfig(
+        level=logging.INFO,
+        format="%(asctime)s - %(name)s - %(levelname)s - %(message)s"
+    )
+
     sensai = SensAI()
     sensai.load_or_create_profile()
     sensai.repl()
-ollama_response = llm.last_response
-
-if ollama_response:
-    print("\n--- OBJET CHATRESPONSE SAUVEGARDÉ ---")
-    print(f"Modèle: {ollama_response.model}")
-    print(f"Tokens évalués: {ollama_response.eval_count}")
-    print(f"Temps de génération: {ollama_response.eval_duration / 1e9:.2f} s")
-else:
-    print("\nErreur: Flux interrompu avant la fin, réponse incomplète.")

@@ -69,27 +69,95 @@ Vous : /recall où j'habite
 
 ---
 
+## 🧱 Comment les commandes sont construites
+
+Chaque commande est une **classe**.
+
+Toutes les commandes héritent de la classe mère **`Command`**.
+
+```mermaid
+classDiagram
+    Command <|-- HelpCommand
+    Command <|-- QuitCommand
+    Command <|-- ProfileCommand
+    Command <|-- ContextCommand
+    Command <|-- MessagesCommand
+    Command <|-- MemoriesCommand
+    Command <|-- PayloadCommand
+    Command <|-- RecallCommand
+    Command <|-- ClearCommand
+    Command <|-- NewCommand
+    CommandRegistry o-- Command
+    class Command {
+        name
+        aliases
+        description
+        usage
+        requires_profile
+        execute(app, args)
+    }
+    class CommandRegistry {
+        register(command)
+        get(trigger)
+        dispatch(line, app)
+    }
+```
+
+Les fichiers, dans `src/commands/` :
+
+| Fichier | Contenu |
+|---------|---------|
+| `base.py` | La classe mère `Command` et `CommandResult` |
+| `registry.py` | `CommandRegistry` : trouve et lance la bonne commande |
+| `general.py` | `/help`, `/quit` |
+| `debug.py` | `/profile`, `/context`, `/messages`, `/memories`, `/payload` |
+| `memory.py` | `/recall` |
+| `session.py` | `/clear`, `/new` |
+| `__init__.py` | La liste `BUILTIN_COMMANDS` et `default_registry()` |
+
+---
+
 ## ➕ Ajouter une commande
 
-1. Ouvrez `src/main.py`.
-2. Ajoutez une méthode dans la classe `SensAI` :
+1. Créez une classe qui hérite de `Command` :
 
 ```python
-def _cmd_bonjour(self, args: str):
-    """Dit bonjour."""
-    print(f"Bonjour {self.profile.name} !")
+from src.commands.base import Command, CommandResult
+
+
+class BonjourCommand(Command):
+    name = "bonjour"
+    aliases = ("salut",)
+    description = "Dit bonjour."
+
+    def execute(self, app, args):
+        print(f"Bonjour {app.profile.name} !")
+        return CommandResult.CONTINUE
 ```
 
-3. Ajoutez-la dans le dictionnaire `_commands` :
-
-```python
-"/bonjour": _cmd_bonjour,
-```
+2. Ajoutez-la dans `BUILTIN_COMMANDS`, dans `src/commands/__init__.py`.
 
 C'est tout.
 
-- La phrase entre `"""` apparaît dans `/help`.
-- Renvoyez `True` pour **quitter** le programme.
+À savoir :
+
+- `description` apparaît dans `/help`.
+- `usage` montre les arguments attendus. Exemple : `"<requête>"`.
+- Renvoyez `CommandResult.QUIT` pour **quitter** le programme.
+- Mettez `requires_profile = False` si la commande marche **sans profil**.
+- Deux commandes ne peuvent pas avoir le **même** nom ou alias. Le registre refuse.
+- Si une commande plante, le terminal **ne s'arrête pas**. L'erreur est affichée et enregistrée dans les logs.
+
+Outils déjà prêts dans `Command` :
+
+| Outil | Rôle |
+|-------|------|
+| `self.title("...")` | Affiche un titre |
+| `self.info("...")` | Affiche une information |
+| `self.success("...")` | Affiche une réussite |
+| `self.error("...")` | Affiche une erreur |
+| `self.preview(texte, 80)` | Coupe un texte trop long |
+| `self.icon(role)` | Donne l'icône d'un rôle (👤, 🤖…) |
 
 ---
 
