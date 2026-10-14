@@ -1,4 +1,4 @@
-# 🐞 9. Problèmes connus
+# 🐞 10. Problèmes connus
 
 Cette page liste ce qui **reste à corriger**.
 
@@ -101,4 +101,4 @@ Certains fichiers contiennent des consignes qui demandent à l'IA d'aider à des
 
 ---
 
-[⬅️ Page précédente : Glossaire](08-glossaire.md) · [🏠 Retour au sommaire](README.md)
+[⬅️ Page précédente : Glossaire](09-glossaire.md) · [🏠 Retour au sommaire](README.md)

@@ -142,7 +142,7 @@ rm galerelm.db
 
 > [!WARNING]
 > Les tests sont **cassés** pour le moment.
-> Voir [Problèmes connus](09-problemes-connus.md).
+> Voir [Problèmes connus](10-problemes-connus.md).
 
 ---
 

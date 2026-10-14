@@ -1,4 +1,4 @@
-# ⌨️ 6. Le terminal
+# ⌨️ 7. Le terminal
 
 Cette page décrit l'utilisation de SensAI **dans le terminal**.
 
@@ -116,4 +116,4 @@ Pour voir plus de détails, changez `INFO` en `DEBUG` en bas de `main.py`.
 
 ---
 
-[⬅️ Page précédente : Wrapper](05-wrapper.md) · [➡️ Page suivante : RapideAPI](07-rapideapi.md)
+[⬅️ Page précédente : Application web](06-web-application.md) · [➡️ Page suivante : RapideAPI](08-rapideapi.md)

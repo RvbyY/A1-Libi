@@ -1,4 +1,4 @@
-# 📖 8. Glossaire
+# 📖 9. Glossaire
 
 Les mots techniques, expliqués simplement.
 
@@ -115,4 +115,4 @@ Voir **Facade**.
 
 ---
 
-[⬅️ Page précédente : RapideAPI](07-rapideapi.md) · [➡️ Page suivante : Problèmes connus](09-problemes-connus.md)
+[⬅️ Page précédente : RapideAPI](08-rapideapi.md) · [➡️ Page suivante : Problèmes connus](10-problemes-connus.md)
