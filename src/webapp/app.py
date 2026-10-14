@@ -1,33 +1,19 @@
 import gradio as gr
 import src.webapp.utils as utils
+from src.webapp.views import Views
 
-with gr.Blocks(title="A1-Libi") as frontend:
+with gr.Blocks(title="A1-Libi", fill_width=True) as frontend:
     current_email = gr.State("")
+    current_chat = gr.State(None)
 
-    # page de connexion
-    with gr.Column(visible=True) as login_page:
-        gr.HTML("<h1>Connexion</h1>")
-        email = gr.Textbox(label="Email")
-        name = gr.Textbox(label="Nom")
-        instructions = gr.Textbox(label="Instructions", lines=3)
-        login_btn = gr.Button("Se connecter", variant="primary")
+    login_page, email, name, instructions, login_btn = Views.connexion_page()
+    chat_page, logout_btn, chatbot, new_btn, chats = Views.main_page(current_email, current_chat)
 
-
-    # page du chat
-    with gr.Column(visible=False) as chat_page:
-        with gr.Row():
-            gr.HTML("<h1>A1-Libi</h1>")
-            new_btn = gr.Button("Nouvelle conversation")
-            logout_btn = gr.Button("Se déconnecter", variant="stop")
-        chatbot = gr.Chatbot(placeholder="**Pose ta première question !**")
-        gr.ChatInterface(fn=utils.respond, chatbot=chatbot, additional_inputs=[current_email])
-
-
-    login_btn.click(utils.login, inputs=[email, name, instructions],
-                    outputs=[current_email, login_page, chat_page, chatbot])
-    logout_btn.click(utils.logout, outputs=[current_email, login_page, chat_page, chatbot])
-    new_btn.click(utils.new_chat, inputs=current_email, outputs=chatbot)
+    login_btn.click(utils.login, inputs=[email, name, instructions], outputs=[current_email, current_chat, login_page, chat_page, chatbot, chats])
+    logout_btn.click(utils.logout, outputs=[current_email, current_chat, login_page, chat_page, chatbot, chats])
+    new_btn.click(utils.new_chat, inputs=current_email, outputs=[current_chat, chatbot, chats])
+    chats.input(utils.open_chat, inputs=[current_email, chats], outputs=[current_chat, chatbot])
 
 
 if __name__ == "__main__":
-    frontend.launch(theme=gr.themes.Default())
+    frontend.launch(theme=gr.themes.Soft())
