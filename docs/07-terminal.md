@@ -6,11 +6,61 @@ Cette page décrit l'utilisation de SensAI **dans le terminal**.
 
 ---
 
-## ▶️ Lancer
+## 📦 Prérequis
+
+Le terminal utilise la librairie **rich**.
+
+Elle sert à afficher les couleurs, le cadre d'accueil et le prompt.
 
 ```bash
-PYTHONPATH=. .venv/bin/python src/main.py
+.venv/bin/pip install rich
 ```
+
+> [!NOTE]
+> rich est souvent déjà installé avec Gradio.
+> Vérifiez avec : `.venv/bin/python -c "import rich"`
+
+---
+
+## ▶️ Lancer
+
+1. Lancez Ollama (`./script/backend.sh`).
+2. À la racine du projet :
+
+```bash
+PYTHONPATH="$PWD:$PWD/src" .venv/bin/python src/main.py
+```
+
+---
+
+## 👀 À quoi ça ressemble
+
+Le style est celui d'un **terminal de hacker** : écriture verte.
+
+```
+╭─ [ A1-LIBI ] ────────────────────────────────────────────────╮
+│  ▄▀█ ▄█        A1-Libi v0.1 · uncensored                     │
+│  █▀█  █        > session : Utilisateur · 10 messages chargés │
+│  █   █ █▄▄ █   > modèle  : Qwen3.8-2B-Uncensored-GGUF        │
+│  █▄▄ █ █▄█ █   > tapez /help pour les commandes              │
+╰──────────────────────────────────────────────────────────────╯
+
+┌──(Utilisateur㉿a1-libi)-[~]
+└─❯ salut
+
+>_ Salut ! Comment puis-je t'aider ?
+```
+
+| Élément | Rôle |
+|---------|------|
+| Le cadre en haut | Logo, profil, nombre de messages, modèle |
+| `┌──(…)` et `└─❯` | Le prompt : c'est là que vous tapez |
+| `>_` | Le début de la réponse de l'IA |
+| Texte rouge | Une erreur |
+
+> [!TIP]
+> rich colore le **texte**, pas le fond.
+> Pour un fond noir, changez le thème de votre terminal.
 
 ---
 
@@ -51,7 +101,7 @@ PYTHONPATH=. .venv/bin/python src/main.py
 Exemple :
 
 ```
-Vous : /recall où j'habite
+└─❯ /recall où j'habite
 ── Résultats RAG pour "où j'habite" (2 trouvés) ──
   1. 👤 [user] (score: 0.8123) J'habite à Paris
   2. 🤖 [assistant] (score: 0.7710) Noté, vous habitez à Paris.
@@ -69,61 +119,59 @@ Vous : /recall où j'habite
 
 ---
 
-## 🧱 Comment les commandes sont construites
+## 🧩 Comment le code est organisé
 
-Chaque commande est une **classe**.
+Fichier : `src/repl.py`
 
-Toutes les commandes héritent de la classe mère **`Command`**.
+| Fonction | Rôle |
+|----------|------|
+| `repl(sensai)` | La boucle principale. Elle dirige tout. |
+| `print_welcome` | Affiche le cadre d'accueil |
+| `read_input` | Affiche le prompt et lit la saisie |
+| `handle_command` | Exécute une commande `/…`. Renvoie `True` pour quitter. |
+| `stream_answer` | Envoie le message à l'IA et affiche la réponse au fur et à mesure |
+| `save_answer` | Enregistre la réponse dans la base |
+| `_cmd_…` | Une fonction par commande |
 
-```mermaid
-classDiagram
-    Command <|-- HelpCommand
-    Command <|-- QuitCommand
-    Command <|-- ProfileCommand
-    Command <|-- ContextCommand
-    Command <|-- MessagesCommand
-    Command <|-- MemoriesCommand
-    Command <|-- PayloadCommand
-    Command <|-- RecallCommand
-    Command <|-- ClearCommand
-    Command <|-- NewCommand
-    CommandRegistry o-- Command
-    class Command {
-        name
-        aliases
-        description
-        usage
-        requires_profile
-        execute(app, args)
-    }
-    class CommandRegistry {
-        register(command)
-        get(trigger)
-        dispatch(line, app)
-    }
+`src/main.py` crée l'objet `SensAI`, puis appelle `repl(sensai)`.
+
+---
+
+## 🎨 Changer les couleurs
+
+Toutes les couleurs sont dans **un seul** endroit : `THEME`, en haut de `src/repl.py`.
+
+```python
+THEME = Theme({
+    "hack":        "green",
+    "hack.dim":    "dim green",
+    "hack.bright": "bold bright_green",
+    "hack.error":  "bold red",
+})
 ```
 
-Les fichiers, dans `src/commands/` :
+- Dans le code, on écrit `[hack]texte[/]`.
+- Changez `green` ici, et tout le terminal change.
 
-| Fichier | Contenu |
-|---------|---------|
-| `base.py` | La classe mère `Command` et `CommandResult` |
-| `registry.py` | `CommandRegistry` : trouve et lance la bonne commande |
-| `general.py` | `/help`, `/quit` |
-| `debug.py` | `/profile`, `/context`, `/messages`, `/memories`, `/payload` |
-| `memory.py` | `/recall` |
-| `session.py` | `/clear`, `/new` |
-| `__init__.py` | La liste `BUILTIN_COMMANDS` et `default_registry()` |
+> [!WARNING]
+> Avec `console.print`, un `[` dans le texte est lu comme un style.
+> Pour afficher un vrai `[`, mettez un `\` devant.
+> Dans une chaîne Python, cela s'écrit `"\\["`.
 
 ---
 
 ## ➕ Ajouter une commande
 
-1. Créez une classe qui hérite de `Command` :
+1. Ouvrez `src/repl.py`.
+2. Ajoutez une fonction :
 
 ```python
-from src.commands.base import Command, CommandResult
+def _cmd_bonjour(self, args: str):
+    """Dit bonjour."""
+    console.print(f"[hack]Bonjour {self.profile.name} ![/]")
+```
 
+3. Ajoutez-la dans le dictionnaire `_commands`, en bas du fichier :
 
 class BonjourCommand(Command):
     name = "bonjour"
@@ -163,7 +211,14 @@ Outils déjà prêts dans `Command` :
 
 ## 📜 Les logs
 
-Les logs s'affichent dans le terminal.
+Par défaut, les logs sont **cachés**.
+
+Seules les **erreurs** s'affichent, pour garder un terminal lisible.
+
+Pour les revoir, dans `src/main.py`, en bas du fichier :
+
+1. Décommentez la ligne `logging.basicConfig(level=logging.INFO, …)`.
+2. Commentez la ligne `logging.basicConfig(level=logging.ERROR)`.
 
 Format :
 
@@ -180,7 +235,7 @@ Format :
 | `galerelm.wrapper` | Wrapper |
 | `src.rapideAPI.client` | Appels HTTP |
 
-Pour voir plus de détails, changez `INFO` en `DEBUG` en bas de `main.py`.
+Pour encore plus de détails, remplacez `INFO` par `DEBUG`.
 
 ---
 
