@@ -6,12 +6,18 @@ import os
 from galerelm.models.chat import Chat, Options, Message, MessageList
 from rapideAPI.client import RapideAPI
 import logging
+from dotenv import load_dotenv
 
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 
 from src.galerelm.models import Base, Chat, Message, Context, Profile
 from src.rapideAPI import RapideAPI
+from src.commands import CommandRegistry, CommandResult, default_registry
+
+from src.scheduler.task_manager import TaskManager
+import threading
+from src.scheduler.runner import TaskRunner
 
 from src.repl import repl
 
@@ -37,10 +43,15 @@ class SensAI:
         Base.metadata.create_all(self.engine)
         self.SessionLocal = sessionmaker(bind=self.engine)
         self.session = self.SessionLocal()
+        self.task_manager = TaskManager(self.session)
+        self.task_runner = TaskRunner(self.SessionLocal, executor=self.chat,)
         logger.info("Base de données initialisée avec succès.")
 
         # ── API ──────────────────────────────────────────────────────
         self.api = RapideAPI(base_url=api_url)
+
+        # ── Commandes du terminal ────────────────────────────────────
+        self.commands = commands if commands is not None else default_registry()
 
         # ── Profil & Contexte ────────────────────────────────────────
         self.profile: Profile = None
@@ -89,7 +100,12 @@ class SensAI:
                 self.session.commit()
 
         # Charge le contexte le plus récent pour ce profil
-        self.context = self.session.query(Context).filter_by(profile_id=self.profile.id).first()
+        self.context = (
+            self.session.query(Context)
+            .filter_by(profile_id=self.profile.id)
+            .order_by(Context.id.desc())
+            .first()
+        )
 
         if not self.context:
             logger.info("Aucun contexte trouvé. Création d'un nouveau contexte.")

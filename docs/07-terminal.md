@@ -173,14 +173,39 @@ def _cmd_bonjour(self, args: str):
 
 3. Ajoutez-la dans le dictionnaire `_commands`, en bas du fichier :
 
-```python
-"/bonjour": _cmd_bonjour,
+class BonjourCommand(Command):
+    name = "bonjour"
+    aliases = ("salut",)
+    description = "Dit bonjour."
+
+    def execute(self, app, args):
+        print(f"Bonjour {app.profile.name} !")
+        return CommandResult.CONTINUE
 ```
+
+2. Ajoutez-la dans `BUILTIN_COMMANDS`, dans `src/commands/__init__.py`.
 
 C'est tout.
 
-- La phrase entre `"""` apparaît dans `/help`.
-- Renvoyez `True` pour **quitter** le programme.
+À savoir :
+
+- `description` apparaît dans `/help`.
+- `usage` montre les arguments attendus. Exemple : `"<requête>"`.
+- Renvoyez `CommandResult.QUIT` pour **quitter** le programme.
+- Mettez `requires_profile = False` si la commande marche **sans profil**.
+- Deux commandes ne peuvent pas avoir le **même** nom ou alias. Le registre refuse.
+- Si une commande plante, le terminal **ne s'arrête pas**. L'erreur est affichée et enregistrée dans les logs.
+
+Outils déjà prêts dans `Command` :
+
+| Outil | Rôle |
+|-------|------|
+| `self.title("...")` | Affiche un titre |
+| `self.info("...")` | Affiche une information |
+| `self.success("...")` | Affiche une réussite |
+| `self.error("...")` | Affiche une erreur |
+| `self.preview(texte, 80)` | Coupe un texte trop long |
+| `self.icon(role)` | Donne l'icône d'un rôle (👤, 🤖…) |
 
 ---
 
