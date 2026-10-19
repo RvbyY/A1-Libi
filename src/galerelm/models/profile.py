@@ -22,7 +22,17 @@ class Profile(Base):
     password: str = Column(String, nullable=False)
     instructions: str = Column(Text, nullable=False)
 
-    contexts = relationship("Context", backref="profile", cascade="all, delete-orphan")
+    contexts = relationship(
+        "Context",
+        backref="profile",
+        cascade="all, delete-orphan"
+    )
+
+    scheduled_tasks = relationship(
+        "ScheduledTask",
+        backref="profile",
+        cascade="all, delete-orphan"
+    )
 
     def __init__(self, name: str, email: str, instructions: str):
         self.id = str(uuid.uuid4())
@@ -45,13 +55,17 @@ class Profile(Base):
     def from_format(cls, data: dict):
         if data is None:
             return None
+
         prof = cls(
             name=data.get("name", ""),
             email=data.get("email", ""),
             instructions=data.get("instructions", "")
         )
+
         if "id" in data:
             prof.id = data["id"]
+
         if "password" in data:
             prof.password = data["password"]
+
         return prof

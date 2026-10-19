@@ -17,7 +17,7 @@ Elle suit des règles pour aider les personnes **dyslexiques**.
 - Des **listes** plutôt que des paragraphes.
 - Des **titres** clairs avec une icône.
 - **Pas d'italique**. Pas de texte souligné.
-- Les mots techniques sont expliqués dans le [Glossaire](08-glossaire.md).
+- Les mots techniques sont expliqués dans le [Glossaire](09-glossaire.md).
 - Les étapes sont **numérotées**.
 
 > [!TIP]
@@ -40,10 +40,11 @@ Lisez les pages dans l'ordre si vous découvrez le projet.
 | 3 | [Mémoire](03-memoire.md) | Comment l'IA se souvient |
 | 4 | [Modèles](04-modeles.md) | Les classes de données |
 | 5 | [Wrapper](05-wrapper.md) | Les fonctions pour Gradio |
-| 6 | [Terminal](06-terminal.md) | Les commandes `/help`, `/quit`… |
-| 7 | [RapideAPI](07-rapideapi.md) | Le client HTTP |
-| 8 | [Glossaire](08-glossaire.md) | Les mots techniques expliqués |
-| 9 | [Problèmes connus](09-problemes-connus.md) | Ce qui reste à corriger |
+| 6 | [Application web](06-web-application.md) | L'interface Gradio dans le navigateur |
+| 7 | [Terminal](07-terminal.md) | Les commandes `/help`, `/quit`… |
+| 8 | [RapideAPI](08-rapideapi.md) | Le client HTTP |
+| 9 | [Glossaire](09-glossaire.md) | Les mots techniques expliqués |
+| 10 | [Problèmes connus](10-problemes-connus.md) | Ce qui reste à corriger |
 
 ---
 

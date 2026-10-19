@@ -35,7 +35,7 @@ Ce script fait 3 choses :
 > Installez les dépendances à la main :
 >
 > ```bash
-> .venv/bin/pip install sqlalchemy requests python-dotenv gradio pytest pytest-cov
+> .venv/bin/pip install sqlalchemy requests python-dotenv gradio rich pytest pytest-cov
 > ```
 
 ---
@@ -142,7 +142,7 @@ rm galerelm.db
 
 > [!WARNING]
 > Les tests sont **cassés** pour le moment.
-> Voir [Problèmes connus](09-problemes-connus.md).
+> Voir [Problèmes connus](10-problemes-connus.md).
 
 ---
 

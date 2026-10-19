@@ -64,11 +64,14 @@ Avantage : l'éditeur **propose** les champs, et les fautes de frappe sont **dé
 | Fonction | Renvoie | Rôle |
 |----------|---------|------|
 | `start_new_chat(email)` | `ContextResponse` | Nouvelle conversation vide |
-| `get_chat_history(email)` | liste de `MessageResponse` | Messages de la conversation en cours |
+| `list_chats(email)` | liste de `ContextResponse` | Toutes les conversations, la plus récente en premier |
+| `get_chat_history(email, context_id)` | liste de `MessageResponse` | Messages d'une conversation |
 | `clear_chat(email)` | `bool` | Vide la conversation en cours |
 
 > [!NOTE]
-> La conversation "en cours" est la **plus récente** du profil.
+> `context_id` est **optionnel**.
+> - Avec un `context_id` : la fonction utilise **cette** conversation.
+> - Sans `context_id` : elle utilise la **plus récente** du profil.
 
 ---
 
@@ -76,7 +79,7 @@ Avantage : l'éditeur **propose** les champs, et les fautes de frappe sont **dé
 
 | Fonction | Renvoie | Rôle |
 |----------|---------|------|
-| `chat_stream(email, prompt)` | générateur de `str` | Réponse qui **grandit** au fil de l'écriture |
+| `chat_stream(email, prompt, context_id)` | générateur de `str` | Réponse qui **grandit** au fil de l'écriture |
 | `chat_blocking(email, prompt)` | `ChatCompletionResponse` | Réponse **complète**, d'un coup |
 
 Pour `chat_stream`, chaque valeur contient **tout le texte depuis le début** :
@@ -161,4 +164,4 @@ historique = [
 
 ---
 
-[⬅️ Page précédente : Modèles](04-modeles.md) · [➡️ Page suivante : Terminal](06-terminal.md)
+[⬅️ Page précédente : Modèles](04-modeles.md) · [➡️ Page suivante : Application web](06-web-application.md)

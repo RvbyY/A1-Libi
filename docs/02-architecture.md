@@ -50,10 +50,13 @@ flowchart TD
 SensAI/
 ├── .env                 → Réglages (modèle, adresse)
 ├── setup.sh             → Installation
-├── backend.sh           → Lancement d'Ollama
+├── script/
+│   ├── backend.sh       → Lancement d'Ollama
+│   └── frontend.sh      → Lancement de l'application web
 ├── docs/                → Cette documentation
 └── src/
-    ├── main.py          → Classe SensAI + terminal
+    ├── main.py          → Classe SensAI + point d'entrée
+    ├── repl.py          → Terminal (CLI) : boucle, affichage, commandes
     ├── wrapper.md       → Liste des fonctions du wrapper
     ├── galerelm/
     │   ├── wrapper.py   → Classe SensAIWrapper
@@ -70,7 +73,7 @@ SensAI/
     │       └── dto.py           → Objets de réponse du wrapper
     ├── rapideAPI/
     │   └── client.py    → Client HTTP
-    ├── webapp/          → Ancienne interface Gradio
+    ├── webapp/          → Application web Gradio
     └── model/           → Ancien prototype (non relié)
 ```
 

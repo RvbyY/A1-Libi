@@ -1,4 +1,4 @@
-# 🌐 7. RapideAPI
+# 🌐 8. RapideAPI
 
 Cette page décrit le **client HTTP** du projet.
 
@@ -107,4 +107,4 @@ En cas d'erreur, le message du serveur est affiché.
 
 ---
 
-[⬅️ Page précédente : Terminal](06-terminal.md) · [➡️ Page suivante : Glossaire](08-glossaire.md)
+[⬅️ Page précédente : Terminal](07-terminal.md) · [➡️ Page suivante : Glossaire](09-glossaire.md)

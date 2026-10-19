@@ -1,3 +1,4 @@
+from src.config import config
 """
 Module context.py
 Gère la mémoire à court terme (relationnelle) de la conversation.
@@ -22,7 +23,7 @@ class Context(Base):
 
     id: int = Column(Integer, primary_key=True, autoincrement=True)
     profile_id: str = Column(String, ForeignKey("profiles.id"), nullable=False)
-    context_limit: int = Column(Integer, default=10, nullable=False)
+    context_limit: int = Column(Integer, default=config.CONTEXT_LIMIT, nullable=False)
 
     options = relationship(
         "Options", uselist=False, backref="context_parent",
@@ -38,17 +39,12 @@ class Context(Base):
         order_by="Message.id"
     )
 
-    deep_context = relationship(
-        "DeepContext", uselist=False, backref="context", cascade="all, delete-orphan"
-    )
-
-    def __init__(self, profile_id: str, context_limit: int = 10, options: Optional[Options] = None,
+    def __init__(self, profile_id: str, context_limit: int = config.CONTEXT_LIMIT, options: Optional[Options] = None,
                  messages: Optional[MessageList] = None):
         self.profile_id = profile_id
         self.context_limit = context_limit
         self.options = options if options is not None else Options()
         self.messages = messages if messages is not None else MessageList([])
-        self.deep_context = DeepContext(vector_limit=4096)
         logger.debug(f"Initialized Context for profile_id={profile_id} with limit={context_limit}")
 
     def add(self, message: Message, api_client=None):
@@ -64,11 +60,12 @@ class Context(Base):
             logger.warning(f"[Context] Limite dépassée ! Transfert de {overflow_count} messages vers DeepContext.")
             overflow_messages = MessageList(self.messages[:overflow_count])
 
-            if self.deep_context is None:
+            if self.profile.deep_context is None:
                 logger.info("[Context] Création à la volée du DeepContext (non trouvé en base).")
-                self.deep_context = DeepContext(vector_limit=4096)
+                from src.galerelm.models.deep_context import DeepContext
+                self.profile.deep_context = DeepContext(vector_limit=config.DEEP_CONTEXT_LIMIT)
 
-            self.deep_context.save(overflow_messages, api_client)
+            self.profile.deep_context.save(overflow_messages, api_client)
             self.messages = MessageList(self.messages[overflow_count:])
             logger.debug(f"[Context] Nettoyage effectué. Nouvelle taille : {len(self.messages)}")
 
