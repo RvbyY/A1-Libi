@@ -35,7 +35,7 @@ Ce script fait 3 choses :
 > Installez les dépendances à la main :
 >
 > ```bash
-> .venv/bin/pip install sqlalchemy requests python-dotenv gradio pytest pytest-cov
+> .venv/bin/pip install sqlalchemy requests python-dotenv gradio rich pytest pytest-cov
 > ```
 
 ---
