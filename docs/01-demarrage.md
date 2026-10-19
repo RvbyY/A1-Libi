@@ -1,14 +1,21 @@
 # 🚀 1. Démarrage
 
-Cette page explique comment **installer** et **lancer** SensAI.
+Cette page explique comment **installer** et **lancer** A1Libi.
 
 [⬅️ Retour au sommaire](README.md)
+
+> [!TIP]
+> Vous voulez juste **utiliser** A1Libi ?
+> Le plus simple est Docker : une seule commande.
+> Voir [Infrastructure](12-infrastructure.md).
+>
+> Cette page explique l'installation **sans Docker**, pour coder.
 
 ---
 
 ## ✅ Ce qu'il faut avant de commencer
 
-- **Python** 3.10 ou plus récent.
+- **Python** 3.12.
 - **Ollama** installé sur la machine.
 - Une **connexion internet** pour le premier téléchargement du modèle.
 
@@ -21,33 +28,28 @@ Ouvrez un terminal dans le dossier du projet.
 Lancez :
 
 ```bash
-./setup.sh
+./scripts/A1Libi_dev -setup
 ```
 
-Ce script fait 3 choses :
+Ce [script](../scripts/A1Libi_dev) fait 3 choses :
 
 1. Il crée un environnement Python dans `.venv`.
 2. Il installe les dépendances.
 3. Il crée le fichier `.env` à partir de `.env.exemple`.
 
-> [!WARNING]
-> Le fichier `requirements.txt` est **vide** pour le moment.
-> Installez les dépendances à la main :
->
-> ```bash
-> .venv/bin/pip install sqlalchemy requests python-dotenv gradio rich pytest pytest-cov
-> ```
-
 ---
 
 ## ⚙️ Étape 2 : Vérifier le fichier `.env`
 
-Le fichier `.env` contient 2 réglages.
+Les 3 réglages les plus importants :
 
 | Nom | Rôle | Exemple |
 |-----|------|---------|
 | `HF_MODEL` | Le modèle d'IA à utiliser | `hf.co/atakhadivi/Qwen3.8-2B-Uncensored-GGUF` |
+| `EMBED_MODEL` | Le modèle de la mémoire longue | `nomic-embed-text` |
 | `OLLAMA_HOST` | L'adresse d'Ollama | `http://localhost:11434` |
+
+La liste complète est dans [`.env.exemple`](../.env.exemple).
 
 > [!IMPORTANT]
 > Le nom du modèle doit être **exact**.
@@ -60,49 +62,41 @@ Le fichier `.env` contient 2 réglages.
 Lancez :
 
 ```bash
-./backend.sh
+./scripts/A1Libi_dev -back
 ```
 
 Ce script fait 4 choses :
 
 1. Il démarre Ollama s'il n'est pas déjà lancé.
 2. Il attend que l'API réponde.
-3. Il télécharge le modèle s'il manque.
+3. Il télécharge les **2 modèles** s'ils manquent : `HF_MODEL` et `EMBED_MODEL`.
 4. Il charge le modèle en mémoire.
 
 Laissez ce terminal **ouvert**.
 
----
-
-## 🔎 Étape 4 : Installer le modèle de mémoire longue
-
-La mémoire longue a besoin d'un **second modèle**.
-
-Ce modèle transforme le texte en nombres (voir [Mémoire](03-memoire.md)).
-
-Lancez une seule fois :
-
-```bash
-ollama pull nomic-embed-text
-```
-
 > [!NOTE]
-> Sans ce modèle, SensAI fonctionne quand même.
-> Mais la mémoire longue ne pourra pas retrouver les anciens messages.
+> `EMBED_MODEL` sert à la mémoire longue.
+> Il transforme le texte en nombres (voir [Mémoire](03-memoire.md)).
 
 ---
 
-## 💬 Étape 5 : Discuter dans le terminal
+## 💬 Étape 4 : Discuter
 
 Ouvrez un **second** terminal.
 
-Lancez :
+Pour discuter dans le terminal, lancez :
 
 ```bash
-PYTHONPATH=. .venv/bin/python src/main.py
+./scripts/A1Libi_dev -cli
 ```
 
-Vous voyez :
+Pour discuter dans le navigateur, lancez :
+
+```bash
+./scripts/A1Libi_dev -front
+```
+
+Avec `-cli`, vous voyez :
 
 ```
 Bienvenue Utilisateur ! (Historique: 0 messages chargés)
@@ -121,7 +115,7 @@ Tapez `/quit` pour quitter.
 
 - Elle est créée **automatiquement** au premier lancement.
 - Elle s'appelle `galerelm.db`.
-- Elle est créée dans le dossier **où vous lancez la commande**.
+- Elle est créée à la **racine** du projet (les scripts s'y placent tout seuls).
 
 Pour repartir de zéro, supprimez-la :
 

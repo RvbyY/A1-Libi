@@ -16,11 +16,19 @@ On lui envoie une demande, elle renvoie une réponse.
 Un **fichier** qui range les informations en tableaux.
 Ici : `galerelm.db`.
 
+### Conteneur
+Un **programme isolé** lancé par Docker.
+Il a tout ce qu'il faut pour tourner, sans rien installer sur la machine.
+
 ### Context
 La **mémoire courte**. Les derniers messages de la conversation.
 
 ### DeepContext
 La **mémoire longue**. Les anciens messages, retrouvés par le sens.
+
+### Docker
+Un logiciel qui lance des programmes dans des **conteneurs**.
+Le projet marche pareil sur toutes les machines.
 
 ### DTO
 Un **objet simple** qui transporte des données.
@@ -42,6 +50,10 @@ Une **boîte à outils** pour construire une application.
 
 ### Gradio
 Une bibliothèque Python pour créer une **interface web** rapidement.
+
+### Image (Docker)
+Le **modèle** d'un conteneur.
+Elle est construite à partir du `Dockerfile`.
 
 ### JSON
 Un **format de texte** pour ranger des données.
@@ -88,7 +100,11 @@ On **cherche** des informations utiles, puis on les **donne** à l'IA avant qu'e
 
 ### REPL
 Une boucle : **lire**, **exécuter**, **afficher**, **recommencer**.
-C'est le mode terminal de SensAI.
+C'est le mode terminal d'A1Libi.
+
+### Script
+Un **fichier de commandes** lancées les unes après les autres.
+Ici : `scripts/A1Libi` et `scripts/A1Libi_dev`.
 
 ### Similarité cosinus
 Un calcul qui dit si deux vecteurs ont le **même sens**.
@@ -109,6 +125,11 @@ Un **morceau de mot**. L'IA écrit token par token.
 ### Vecteur
 Une **liste de nombres** qui représente le **sens** d'un texte.
 Deux textes proches ont des vecteurs proches.
+
+### Volume
+Un **dossier gardé** par Docker.
+Son contenu reste quand le conteneur s'arrête.
+Ici : les modèles d'Ollama.
 
 ### Wrapper
 Voir **Facade**.
