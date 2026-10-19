@@ -12,6 +12,7 @@ from src.galerelm.models.context import Context
 from src.galerelm.models.deep_context import DeepContext, LongTermMemory
 from src.galerelm.models.profile import Profile
 from src.galerelm.models.chat import Chat
+from src.galerelm.models.prompt import Prompt, PromptBuilder, PromptTemplate
 from src.galerelm.models.scheduled_task import ScheduledTask
 
 __all__ = [
@@ -28,6 +29,8 @@ __all__ = [
     "Context", "DeepContext", "LongTermMemory",
     # Profile
     "Profile",
+    # Prompt
+    "Prompt", "PromptBuilder", "PromptTemplate",
     # Scheduled tasks
     "ScheduledTask",
     # Chat (objet métier, pas ORM)

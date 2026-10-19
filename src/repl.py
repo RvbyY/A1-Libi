@@ -97,12 +97,12 @@ def stream_answer(self, user_prompt: str):
     self.context.add(Message(role="user", content=user_prompt), api_client=self.api)
     self.session.commit()
 
-    system_prompt = self._build_augmented_prompt(user_prompt)
+    built_prompt = self.build_prompt(user_prompt)
     llm = Chat(
         model=self.model,
         api=self.api,
         messages=self.context.get_messages_copy(),
-        system_prompt=system_prompt,
+        system_prompt=built_prompt,
     )
 
     console.print("\n[hack.bright]>_[/] ", end="")

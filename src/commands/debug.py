@@ -84,12 +84,12 @@ class PayloadCommand(Command):
 
     def execute(self, app, args):
         # Avec une requête, on montre aussi le prompt système enrichi par le RAG.
-        system_prompt = app._build_augmented_prompt(args) if args else app.profile.instructions
+        built_prompt = app.build_prompt(args)
         llm = Chat(
             model=app.model,
             api=app.api,
             messages=app.context.get_messages_copy(),
-            system_prompt=system_prompt,
+            system_prompt=built_prompt,
         )
         self.title("Payload JSON")
         print(json.dumps(llm.format(), indent=2, ensure_ascii=False))

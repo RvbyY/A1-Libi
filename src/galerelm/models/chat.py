@@ -8,6 +8,7 @@ from typing import Literal, Optional, Union
 
 from src.galerelm.models.message import Message, MessageList, ToolCalls
 from src.galerelm.models.options import Options
+from src.galerelm.models.prompt import Prompt
 from src.galerelm.models.tools import ToolsList
 from src.galerelm.models.response import ChatResponse
 from src.rapideAPI.client import RapideAPI
@@ -32,7 +33,7 @@ class Chat:
         messages: MessageList = None,
         tools: ToolsList = None,
         options: Options = None,
-        system_prompt: str = None,
+        system_prompt: Union[str, Prompt] = None,
         think: Union[bool, Think] = None,
         keep_alive: Union[str, int] = "2m",
         logprobs: bool = False,
@@ -54,7 +55,7 @@ class Chat:
         self.last_response: Optional[ChatResponse] = None
 
         if system_prompt:
-            self._set_system_prompt(system_prompt)
+            self._set_system_prompt(str(system_prompt))
 
     # ── Construction du payload ──────────────────────────────────────
 

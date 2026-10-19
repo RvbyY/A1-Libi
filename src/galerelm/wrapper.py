@@ -3,7 +3,7 @@ import logging
 from typing import Generator, List, Optional
 
 from src.main import SensAI
-from src.galerelm.models import Profile, Context, Message, LongTermMemory, Chat
+from src.galerelm.models import Profile, Context, Message, LongTermMemory, Chat, PromptBuilder
 from src.galerelm.models.dto import (
     ProfileResponse, ContextResponse, MessageResponse, 
     ChatCompletionResponse, MemoryResponse, StatusResponse
@@ -116,13 +116,18 @@ class SensAIWrapper:
         context.add(Message(role="user", content=prompt), api_client=self.core.api)
         session.commit()
 
-        system_prompt = self.core._build_augmented_prompt(prompt, profile=profile)
+        built_prompt = (
+            PromptBuilder()
+            .with_profile(profile)
+            .with_rag(profile, prompt, self.core.api, top_k=3)
+            .build()
+        )
 
         chat = Chat(
             model=self.core.model,
             api=self.core.api,
             messages=context.get_messages_copy(),
-            system_prompt=system_prompt,
+            system_prompt=built_prompt,
         )
         return chat, context
 
