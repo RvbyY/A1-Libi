@@ -21,5 +21,5 @@ class ToolRegistry:
         tool = self._tools.get(name)
 
         if tool is None:
-            raise ValueError(f"Unknow tool: {name}")
+            raise ValueError(f"Unknown tool: {name}")
         return tool.execute(context, arguments)
