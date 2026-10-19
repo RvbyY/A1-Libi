@@ -45,7 +45,6 @@ class Discord(ToolsInterface):
             "Content-Type": "application/json",
         }
 
-        # Discord requires a DM channel to be created before sending its message.
         channel_response = requests.post(
             "https://discord.com/api/v10/users/@me/channels",
             headers=headers,
