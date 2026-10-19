@@ -1,6 +1,6 @@
 # ⌨️ 7. Le terminal
 
-Cette page décrit l'utilisation de SensAI **dans le terminal**.
+Cette page décrit l'utilisation d'A1Libi **dans le terminal**.
 
 [⬅️ Retour au sommaire](README.md)
 
@@ -24,11 +24,11 @@ Elle sert à afficher les couleurs, le cadre d'accueil et le prompt.
 
 ## ▶️ Lancer
 
-1. Lancez Ollama (`./script/backend.sh`).
-2. À la racine du projet :
+1. Lancez Ollama (`./scripts/A1Libi_dev -back`).
+2. Dans un **autre** terminal :
 
 ```bash
-PYTHONPATH="$PWD:$PWD/src" .venv/bin/python src/main.py
+./scripts/A1Libi_dev -cli
 ```
 
 ---

@@ -1,0 +1,14 @@
+.git/
+.github/
+.venv/
+.gradio/
+tempmodel/
+docs/
+**/__pycache__/
+*.pyc
+*.db
+.env
+.env.*
+ollama.log
+Dockerfile
+docker-compose.yaml
