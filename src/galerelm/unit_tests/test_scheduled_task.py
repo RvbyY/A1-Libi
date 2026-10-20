@@ -106,3 +106,37 @@ def test_cancel_task():
     manager.cancel_task(task)
 
     assert task.status == "cancelled"
+
+
+def test_schedule_parser_modes_and_reschedule():
+    from src.scheduler.parser import ScheduleParser
+
+    spec_in = ScheduleParser.parse("in 15m Vérifier les logs")
+    assert spec_in.prompt == "Vérifier les logs"
+    assert spec_in.recurrence is None
+    assert spec_in.scheduled_at > datetime.now()
+
+    spec_daily = ScheduleParser.parse("daily 08:30 Briefing matin")
+    assert spec_daily.recurrence == "daily"
+    assert spec_daily.scheduled_at.hour == 8
+    assert spec_daily.scheduled_at.minute == 30
+
+    spec_weekly = ScheduleParser.parse("weekly lundi 14:00 Point hebdo")
+    assert spec_weekly.recurrence == "weekly:lundi"
+
+    spec_every = ScheduleParser.parse("every 2h Check serveur")
+    assert spec_every.recurrence == "every:2h"
+
+    session = make_session()
+    profile = create_profile(session)
+    manager = TaskManager(session)
+    base_time = datetime.now()
+    recurring_task = manager.create_task(
+        profile_id=profile.id,
+        prompt="Recurring check",
+        scheduled_at=base_time,
+        recurrence="daily",
+    )
+    manager.reschedule_recurring_task(recurring_task)
+    assert recurring_task.status == "pending"
+    assert recurring_task.scheduled_at == base_time + timedelta(days=1)

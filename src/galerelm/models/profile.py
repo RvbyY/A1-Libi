@@ -28,6 +28,13 @@ class Profile(Base):
         cascade="all, delete-orphan"
     )
 
+    deep_context = relationship(
+        "DeepContext",
+        uselist=False,
+        backref="profile",
+        cascade="all, delete-orphan"
+    )
+
     scheduled_tasks = relationship(
         "ScheduledTask",
         backref="profile",

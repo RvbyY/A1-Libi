@@ -2,10 +2,18 @@ import re
 import smtplib
 from email.header import Header
 from email.mime.text import MIMEText
+from typing import Optional
 
+from src.config import config
 from ..ITools import ToolContext, ToolResult, ToolsInterface
 
 class Email(ToolsInterface):
+    """Outil d'envoi d'emails via SMTP configuré dans Config."""
+
+    def __init__(self, smtp_host: Optional[str] = None, smtp_port: Optional[int] = None):
+        self.smtp_host = smtp_host or config.SMTP_HOST
+        self.smtp_port = smtp_port or config.SMTP_PORT
+
     @property
     def name(self) -> str:
         return "email"
@@ -37,7 +45,7 @@ class Email(ToolsInterface):
 
     @staticmethod
     def is_valid_email(address: str) -> bool:
-        return bool(re.fullmatch(r"[^@\s]+@[^@\s]+\.[^@\s]+", address))
+        return bool(isinstance(address, str) and re.fullmatch(r"[^@\s]+@[^@\s]+\.[^@\s]+", address))
 
     def send_email(
         self,
@@ -51,7 +59,7 @@ class Email(ToolsInterface):
         msg["From"] = sender
         msg["To"] = recipient
 
-        with smtplib.SMTP("localhost") as mail_server:
+        with smtplib.SMTP(self.smtp_host, self.smtp_port) as mail_server:
             mail_server.ehlo()
             mail_server.starttls()
             mail_server.ehlo()
@@ -59,9 +67,9 @@ class Email(ToolsInterface):
 
     def execute(self, context: ToolContext, payload: dict) -> ToolResult:
         sender = context.user_email
-        recipient = payload["recipient"]
-        subject = payload["subject"]
-        content = payload["content"]
+        recipient = str(payload.get("recipient", ""))
+        subject = str(payload.get("subject", ""))
+        content = str(payload.get("content", ""))
 
         if not sender:
             return ToolResult(False, "The user has no sender email address.")
