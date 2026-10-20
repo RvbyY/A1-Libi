@@ -1,10 +1,10 @@
 """
 Module create_task.py
-Outil permettant au LLM de planifier une tâche différée ou récurrente via TaskManager.
+Outil permettant au LLM de planifier une tâche différée ou récurrente via ScheduleParser et TaskManager.
 """
-from datetime import datetime
 from typing import Optional
 
+from src.scheduler.parser import ScheduleParser
 from src.scheduler.task_manager import TaskManager
 from ..ITools import ToolContext, ToolResult, ToolsInterface
 
@@ -31,7 +31,7 @@ class CreateTaskTool(ToolsInterface):
                 },
                 "scheduled_at": {
                     "type": "string",
-                    "description": "Execution date and time in ISO 8601 format (e.g. 2026-10-20T14:30:00).",
+                    "description": "Execution time in ISO 8601 format (e.g. 2026-10-20T14:30:00), HH:MM, or relative duration (e.g. '30m').",
                 },
                 "recurrence": {
                     "type": "string",
@@ -57,12 +57,12 @@ class CreateTaskTool(ToolsInterface):
         if not prompt:
             return ToolResult(False, "prompt is required to create a task.")
         if not scheduled_at_str:
-            return ToolResult(False, "scheduled_at is required in ISO 8601 format.")
+            return ToolResult(False, "scheduled_at is required.")
 
         try:
-            scheduled_at = datetime.fromisoformat(scheduled_at_str)
-        except ValueError:
-            return ToolResult(False, "scheduled_at must be a valid ISO 8601 datetime.")
+            scheduled_at = ScheduleParser.parse_datetime_or_relative(scheduled_at_str)
+        except ValueError as exc:
+            return ToolResult(False, f"Invalid scheduled_at value: {exc}")
 
         manager = self._resolve_task_manager(context)
         if manager is None:
