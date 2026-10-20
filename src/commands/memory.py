@@ -16,12 +16,17 @@ class RecallCommand(Command):
             self.error(f"Usage : /{self.name} {self.usage}")
             return CommandResult.CONTINUE
 
-        deep = app.context.deep_context
+        deep = app.profile.deep_context
         if not deep or not deep.memories:
             self.info("Aucune mémoire long terme enregistrée.")
             return CommandResult.CONTINUE
 
-        results = deep.search(args, app.api, top_k=self.top_k)
+        try:
+            results = deep.search(args, app.api, top_k=self.top_k)
+        except Exception as e:
+            self.error(f"Erreur lors de la recherche : {e}")
+            return CommandResult.CONTINUE
+
         if not results:
             self.info("Aucun résultat pertinent trouvé.")
             return CommandResult.CONTINUE
