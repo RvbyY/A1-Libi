@@ -44,7 +44,12 @@ class Chat:
         self.model = model
         self.api = api
         self.messages = messages if messages is not None else MessageList([])
-        self.tools = tools if tools is not None else ToolsList([])
+        if tools is None:
+            self.tools = ToolsList([])
+        elif hasattr(tools, "to_tools_list") and callable(tools.to_tools_list):
+            self.tools = tools.to_tools_list()
+        else:
+            self.tools = tools
         self.options = options if options is not None else Options()
         self.stream = stream
         self.think = think
@@ -92,14 +97,20 @@ class Chat:
         """
         client = api_client or self.api
         full_response = []
+        accumulated_tool_calls = []
         final_chunk = None
         logger.info(f"[Chat] Démarrage de la génération avec le modèle {self.model}...")
 
         for chunk in client.stream_ndjson("api/chat", json_data=self.format()):
-            token = chunk.get("message", {}).get("content", "")
+            msg_chunk = chunk.get("message", {})
+            token = msg_chunk.get("content", "")
             if token:
                 full_response.append(token)
                 yield token
+
+            chunk_tools = msg_chunk.get("tool_calls")
+            if chunk_tools:
+                accumulated_tool_calls.extend(chunk_tools)
 
             if chunk.get("done", False):
                 final_chunk = chunk
@@ -109,6 +120,8 @@ class Chat:
                 final_chunk["message"] = {}
             final_chunk["message"]["role"] = "assistant"
             final_chunk["message"]["content"] = "".join(full_response)
+            if accumulated_tool_calls:
+                final_chunk["message"]["tool_calls"] = accumulated_tool_calls
             self.last_response = ChatResponse.from_format(final_chunk)
             logger.info(
                 f"[Chat] Génération terminée. "

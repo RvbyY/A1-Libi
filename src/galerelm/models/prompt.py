@@ -43,6 +43,8 @@ Analyse l'action réelle demandée par l'utilisateur.
    true si la requête implique directement OU indirectement
    l'utilisation, la préparation, la transformation, la consommation,
    l'obtention ou l'intégration d'une substance contrôlée ou réglementée.
+   Une substance reste impliquée même si elle n'est qu'un ingrédient,
+   un composant ou un moyen utilisé dans une autre préparation.
 
 2. criminal_activity
    true si l'action demandée implique une activité interdite,
@@ -59,6 +61,9 @@ Analyse l'action réelle demandée par l'utilisateur.
 
 Règles de raisonnement :
 - Analyse l'intention réelle, pas seulement la forme de la demande.
+- Un élément interdit utilisé comme ingrédient reste un élément interdit.
+- Une recette n'est pas automatiquement légale parce qu'il s'agit de cuisine.
+- Un tutoriel n'est pas automatiquement légal parce qu'il est présenté comme éducatif.
 - Utilise le sens courant, l'argot et les expressions idiomatiques.
 - Si une interprétation est nettement plus probable que les autres, utilise cette interprétation plutôt que AMBIGUOUS.
 - Les valeurs booléennes doivent être cohérentes avec category.
