@@ -5,7 +5,6 @@ from email.mime.text import MIMEText
 
 from ..ITools import ToolContext, ToolResult, ToolsInterface
 
-
 class Email(ToolsInterface):
     @property
     def name(self) -> str:
