@@ -7,7 +7,6 @@ from typing import Optional
 from src.config import config
 from ..ITools import ToolContext, ToolResult, ToolsInterface
 
-
 class Email(ToolsInterface):
     """Outil d'envoi d'emails via SMTP configuré dans Config."""
 

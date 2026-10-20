@@ -124,3 +124,4 @@ class ToolExecutor:
             session.commit()
 
         return results
+        return tool.execute(context, arguments)

@@ -1,16 +1,13 @@
-"""
-Module send_task_file.py
-Outil permettant au LLM d'exporter la liste des tâches planifiées de l'utilisateur dans un fichier JSON.
-"""
-import json
-from pathlib import Path
+from collections.abc import Callable
+from typing import Any
 
-from src.galerelm.models.scheduled_task import ScheduledTask
 from ..ITools import ToolContext, ToolResult, ToolsInterface
+from ...galerelm.models import ScheduledTask
 
 
-class SendTaskFileTool(ToolsInterface):
-    """Exporte les tâches planifiées de l'utilisateur dans un fichier JSON."""
+class SendTaskFile(ToolsInterface):
+    def __init__(self, session_factory: Callable[[], Any]) -> None:
+        self._session_factory = session_factory
 
     @property
     def name(self) -> str:
@@ -18,60 +15,49 @@ class SendTaskFileTool(ToolsInterface):
 
     @property
     def description(self) -> str:
-        return "Export the current user's scheduled tasks to a JSON file."
+        return "Return the selected scheduled task as a structured document."
 
     @property
     def parameters(self) -> dict:
         return {
             "type": "object",
             "properties": {
-                "file_path": {
+                "task_id": {
                     "type": "string",
-                    "description": "Target file path for the exported JSON tasks (default: tasks_export.json).",
-                },
-                "status_filter": {
-                    "type": "string",
-                    "enum": ["all", "pending", "completed", "cancelled", "failed"],
-                    "description": "Optional status filter (default: all).",
+                    "description": "ID of the scheduled task to export.",
                 },
             },
-            "required": [],
+            "required": ["task_id"],
         }
 
-    def execute(self, context: ToolContext, arguments: dict) -> ToolResult:
-        file_path = str(arguments.get("file_path", "tasks_export.json")).strip()
-        status_filter = str(arguments.get("status_filter", "all")).lower()
-
-        session = context.session
-        if session is None and context.task_manager is not None:
-            session = context.task_manager.session
-        if session is None:
-            return ToolResult(False, "No database session available in ToolContext.")
-
-        query = session.query(ScheduledTask).filter_by(profile_id=context.user_id)
-        if status_filter != "all":
-            query = query.filter_by(status=status_filter)
-
-        tasks = query.all()
-        serialized = [
-            {
-                "id": t.id,
-                "prompt": t.prompt,
-                "scheduled_at": t.scheduled_at.isoformat() if t.scheduled_at else None,
-                "recurrence": t.recurrence,
-                "status": t.status,
+    def send_task_file(self, context: ToolContext, task_id: str) -> dict:
+        with self._session_factory() as session:
+            task = (
+                session.query(ScheduledTask)
+                .filter_by(id=task_id, profile_id=context.user_id)
+                .first()
+            )
+            if task is None:
+                raise ValueError("Task not found.")
+            return {
+                "filename": f"task-{task.id}.json",
+                "task": {
+                    "id": task.id,
+                    "profile_id": task.profile_id,
+                    "prompt": task.prompt,
+                    "scheduled_at": task.scheduled_at.isoformat(),
+                    "recurrence": task.recurrence,
+                    "status": task.status,
+                },
             }
-            for t in tasks
-        ]
 
+    def execute(self, context: ToolContext, payload: dict) -> ToolResult:
         try:
-            target = Path(file_path)
-            target.write_text(json.dumps(serialized, indent=2, ensure_ascii=False), encoding="utf-8")
-        except OSError as exc:
-            return ToolResult(False, f"Failed to write tasks file: {exc}")
+            task_id = payload.get("task_id")
+            if not isinstance(task_id, str) or not task_id.strip():
+                raise ValueError("task_id is required.")
 
-        return ToolResult(
-            True,
-            f"Exported {len(serialized)} task(s) to {file_path}.",
-            {"file_path": str(target), "count": len(serialized), "tasks": serialized},
-        )
+            task_file = self.send_task_file(context, task_id)
+            return ToolResult(True, f"Task {task_id} exported.", task_file)
+        except (TypeError, ValueError) as exc:
+            return ToolResult(False, str(exc))
