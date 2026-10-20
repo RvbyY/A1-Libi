@@ -1,4 +1,5 @@
 from collections.abc import Callable
+from contextlib import nullcontext
 from typing import Any
 
 from ..ITools import ToolContext, ToolResult, ToolsInterface
@@ -6,7 +7,7 @@ from ...galerelm.models import ScheduledTask
 
 
 class SendTaskFile(ToolsInterface):
-    def __init__(self, session_factory: Callable[[], Any]) -> None:
+    def __init__(self, session_factory: Callable[[], Any] | None = None) -> None:
         self._session_factory = session_factory
 
     @property
@@ -31,7 +32,7 @@ class SendTaskFile(ToolsInterface):
         }
 
     def send_task_file(self, context: ToolContext, task_id: str) -> dict:
-        with self._session_factory() as session:
+        with self._session_context(context) as session:
             task = (
                 session.query(ScheduledTask)
                 .filter_by(id=task_id, profile_id=context.user_id)
@@ -61,3 +62,13 @@ class SendTaskFile(ToolsInterface):
             return ToolResult(True, f"Task {task_id} exported.", task_file)
         except (TypeError, ValueError) as exc:
             return ToolResult(False, str(exc))
+
+    def _session_context(self, context: ToolContext):
+        if self._session_factory is not None:
+            return self._session_factory()
+        if context.session is None:
+            raise RuntimeError("A database session is required.")
+        return nullcontext(context.session)
+
+
+SendTaskFileTool = SendTaskFile
