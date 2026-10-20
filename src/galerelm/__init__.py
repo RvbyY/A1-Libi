@@ -17,6 +17,7 @@ from src.galerelm.models import (
     PromptTemplate,
 )
 from src.galerelm.models.scheduled_task import ScheduledTask
+from src.galerelm.rag import EmbeddingService, RAGManager
 from src.galerelm.session_manager import SessionManager
 
 __all__ = [
@@ -24,8 +25,10 @@ __all__ = [
     "Chat",
     "ChatEngine",
     "DatabaseManager",
+    "EmbeddingService",
     "GuardrailDecision",
     "IntentGuardrail",
+    "RAGManager",
     "SessionManager",
     "Message",
     "MessageList",
