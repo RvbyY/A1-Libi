@@ -29,7 +29,8 @@ class ContextCommand(Command):
 
     def execute(self, app, args):
         ctx = app.context
-        mem_count = len(ctx.deep_context.memories) if ctx.deep_context else 0
+        deep = app.profile.deep_context if app.profile else None
+        mem_count = len(deep.memories) if deep and deep.memories else 0
         self.title("Contexte")
         print(f"  ID              : {ctx.id}")
         print(f"  Profile ID      : {ctx.profile_id}")
@@ -64,7 +65,7 @@ class MemoriesCommand(Command):
     description = "Lister les mémoires long terme."
 
     def execute(self, app, args):
-        deep = app.context.deep_context
+        deep = app.profile.deep_context if app.profile else None
         if not deep or not deep.memories:
             self.info("Aucune mémoire long terme enregistrée.")
             return CommandResult.CONTINUE
@@ -84,12 +85,12 @@ class PayloadCommand(Command):
 
     def execute(self, app, args):
         # Avec une requête, on montre aussi le prompt système enrichi par le RAG.
-        system_prompt = app._build_augmented_prompt(args) if args else app.profile.instructions
+        built_prompt = app.build_prompt(args)
         llm = Chat(
             model=app.model,
             api=app.api,
             messages=app.context.get_messages_copy(),
-            system_prompt=system_prompt,
+            system_prompt=built_prompt,
         )
         self.title("Payload JSON")
         print(json.dumps(llm.format(), indent=2, ensure_ascii=False))

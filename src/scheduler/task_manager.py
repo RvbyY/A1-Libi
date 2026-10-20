@@ -1,9 +1,13 @@
-from datetime import datetime, timedelta
+from datetime import datetime
+from typing import Optional
 
 from src.galerelm.models.scheduled_task import ScheduledTask
+from src.scheduler.parser import ScheduleParser
 
 
 class TaskManager:
+    """Gère la persistance et le cycle de vie des tâches planifiées (ScheduledTask)."""
+
     def __init__(self, session):
         self.session = session
 
@@ -12,7 +16,7 @@ class TaskManager:
         profile_id: str,
         prompt: str,
         scheduled_at: datetime,
-        recurrence: str | None = None,
+        recurrence: Optional[str] = None,
     ) -> ScheduledTask:
         task = ScheduledTask(
             profile_id=profile_id,
@@ -21,13 +25,11 @@ class TaskManager:
             recurrence=recurrence,
             status="pending",
         )
-
         self.session.add(task)
         self.session.commit()
-
         return task
 
-    def get_due_tasks(self):
+    def get_due_tasks(self) -> list[ScheduledTask]:
         return (
             self.session.query(ScheduledTask)
             .filter(
@@ -37,63 +39,24 @@ class TaskManager:
             .all()
         )
 
-    def cancel_task(self, task: ScheduledTask):
+    def cancel_task(self, task: ScheduledTask) -> None:
         task.status = "cancelled"
         self.session.commit()
 
-    def mark_completed(self, task: ScheduledTask):
+    def mark_completed(self, task: ScheduledTask) -> None:
         task.status = "completed"
         self.session.commit()
 
-    def mark_failed(self, task: ScheduledTask):
+    def mark_failed(self, task: ScheduledTask) -> None:
         task.status = "failed"
         self.session.commit()
 
-    def reschedule_recurring_task(self, task: ScheduledTask):
-        if task.recurrence == "daily":
-            task.scheduled_at = task.scheduled_at + timedelta(days=1)
-            task.status = "pending"
-            self.session.commit()
-            return
-
-        if task.recurrence and task.recurrence.startswith("weekly:"):
-            task.scheduled_at = task.scheduled_at + timedelta(days=7)
-            task.status = "pending"
-            self.session.commit()
-            return
-
-        if task.recurrence and task.recurrence.startswith("every:"):
-            duration = task.recurrence.removeprefix("every:")
-            task.scheduled_at = datetime.now() + self._duration_to_delta(duration)
+    def reschedule_recurring_task(self, task: ScheduledTask) -> None:
+        next_dt = ScheduleParser.next_occurrence(task.scheduled_at, task.recurrence)
+        if next_dt is not None:
+            task.scheduled_at = next_dt
             task.status = "pending"
             self.session.commit()
             return
 
         self.mark_completed(task)
-
-    @staticmethod
-    def _duration_to_delta(duration: str) -> timedelta:
-        if len(duration) < 2:
-            raise ValueError("Invalid recurrence duration")
-
-        amount_part = duration[:-1]
-        unit = duration[-1].lower()
-
-        amount = int(amount_part)
-
-        if amount <= 0:
-            raise ValueError("Recurrence duration must be positive")
-
-        if unit == "s":
-            return timedelta(seconds=amount)
-
-        if unit == "m":
-            return timedelta(minutes=amount)
-
-        if unit == "h":
-            return timedelta(hours=amount)
-
-        if unit == "d":
-            return timedelta(days=amount)
-
-        raise ValueError("Invalid recurrence unit")

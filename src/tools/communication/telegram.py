@@ -1,21 +1,36 @@
-import os
+from typing import Optional
 from bs4 import BeautifulSoup
-import requests
-from dotenv import load_dotenv
 
+from src.config import config
+from src.rapideAPI.client import RapideAPI
 from ..ITools import ToolContext, ToolResult, ToolsInterface
 
-load_dotenv()
-TOKEN = os.getenv('TOKEN')
 
 class Telegram(ToolsInterface):
+    """Outil d'envoi de messages Telegram via RapideAPI et Config."""
+
+    TELEGRAM_API_BASE = "https://api.telegram.org"
+
+    def __init__(self, token: Optional[str] = None, api_client: Optional[RapideAPI] = None):
+        self._token = token
+        self._api_client = api_client
+
+    @property
+    def token(self) -> str:
+        return self._token if self._token is not None else config.TELEGRAM_TOKEN
+
+    def _get_client(self) -> RapideAPI:
+        if self._api_client is not None:
+            return self._api_client
+        return RapideAPI(base_url=self.TELEGRAM_API_BASE, timeout=10)
+
     @property
     def name(self) -> str:
         return "telegram"
 
     @property
     def description(self) -> str:
-        return "Send a telegram from A1-Libi bot to recipient."
+        return "Send a Telegram message from A1-Libi bot to a recipient."
 
     @property
     def parameters(self) -> dict:
@@ -24,65 +39,63 @@ class Telegram(ToolsInterface):
             "properties": {
                 "recipient": {
                     "type": "string",
-                    "description": "Account ID of the recipient.",
+                    "description": "Account ID or username of the recipient.",
                 },
                 "content": {
                     "type": "string",
-                    "description": "Content of the message"
+                    "description": "Content of the message.",
                 },
             },
             "required": ["recipient", "content"],
         }
 
-    @staticmethod
-    def get_html(url, params=None):
-        r = requests.get(url, params=params)
-        return r
-
-    @staticmethod
-    def is_valid_phone(recipient: str) -> bool:
-        url = f'https://t.me/{recipient}'
+    def is_valid_recipient(self, recipient: str) -> bool:
+        if not recipient:
+            return False
+        url = f"https://t.me/{recipient}"
         try:
-            response = Telegram.get_html(url)
-            response.raise_for_status()
-        except requests.RequestException:
+            html_text = self._get_client().get(url)
+        except Exception:
             return False
 
-        soup = BeautifulSoup(response.text, "html.parser")
+        if not isinstance(html_text, str):
+            return False
+        soup = BeautifulSoup(html_text, "html.parser")
         return soup.find("meta", attrs={"property": "og:title"}) is not None
 
     def send_telegram_message(self, recipient: str, content: str) -> dict:
-        response = requests.post(
-            f"https://api.telegram.org/bot{TOKEN}/sendMessage",
+        response = self._get_client().post(
+            f"bot{self.token}/sendMessage",
             json={
                 "chat_id": recipient,
                 "text": content,
             },
-            timeout=10,
         )
-        response.raise_for_status()
-        result = response.json()
-        if not result.get("ok", False):
-            description = result.get("description", "Unknown Telegram API error")
+        if not isinstance(response, dict) or not response.get("ok", False):
+            description = (
+                response.get("description", "Unknown Telegram API error")
+                if isinstance(response, dict)
+                else "Invalid Telegram response"
+            )
             raise ValueError(description)
-        return result
+        return response
 
     def execute(self, context: ToolContext, payload: dict) -> ToolResult:
-        sender = TOKEN
-        recipient = payload["recipient"]
-        content = payload["content"]
+        del context
+        recipient = str(payload.get("recipient", ""))
+        content = str(payload.get("content", ""))
 
-        if not sender:
+        if not self.token:
             return ToolResult(False, "The bot doesn't have a TOKEN set")
-        if not self.is_valid_phone(recipient):
+        if not self.is_valid_recipient(recipient):
             return ToolResult(False, "Invalid recipient phone format.")
 
         try:
             self.send_telegram_message(recipient, content)
-        except requests.RequestException as exc:
-            return ToolResult(False, f"Telegram request failed: {exc}")
         except ValueError as exc:
             return ToolResult(False, f"Telegram rejected the message: {exc}")
+        except Exception as exc:
+            return ToolResult(False, f"Telegram request failed: {exc}")
 
         return ToolResult(
             True,

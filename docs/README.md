@@ -45,6 +45,9 @@ Lisez les pages dans l'ordre si vous découvrez le projet.
 | 8 | [RapideAPI](08-rapideapi.md) | Le client HTTP |
 | 9 | [Glossaire](09-glossaire.md) | Les mots techniques expliqués |
 | 10 | [Problèmes connus](10-problemes-connus.md) | Ce qui reste à corriger |
+| 11 | [Intent classifier](11-intent-classifier.md) | Classer l'intention d'une demande |
+| 12 | [Architecture des context tools](12-architecture-context-tools.md) | Organisation des tools |
+| 13 | [Context tools](13-context-tools.md) | Fonctionnement de chaque tool |
 
 ---
 
