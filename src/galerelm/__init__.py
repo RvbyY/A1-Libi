@@ -3,6 +3,14 @@ galerelm — Framework LLM pour SensAI.
 """
 from src.galerelm.database import DatabaseManager
 from src.galerelm.engine import ChatEngine
+from src.galerelm.graph import (
+    END,
+    AntiHallucinationWorkflow,
+    CompiledGraph,
+    HallucinationGrade,
+    HallucinationGrader,
+    StateGraph,
+)
 from src.galerelm.intent_classifier import GuardrailDecision, IntentGuardrail
 from src.galerelm.models import (
     Base,
@@ -21,15 +29,21 @@ from src.galerelm.rag import EmbeddingService, RAGManager
 from src.galerelm.session_manager import SessionManager
 
 __all__ = [
+    "AntiHallucinationWorkflow",
     "Base",
     "Chat",
     "ChatEngine",
+    "CompiledGraph",
     "DatabaseManager",
+    "END",
     "EmbeddingService",
     "GuardrailDecision",
+    "HallucinationGrade",
+    "HallucinationGrader",
     "IntentGuardrail",
     "RAGManager",
     "SessionManager",
+    "StateGraph",
     "Message",
     "MessageList",
     "Context",

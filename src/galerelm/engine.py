@@ -1,12 +1,13 @@
 """
 Module engine.py
 Orchestrateur central (ChatEngine) gérant le cycle complet d'un tour de conversation :
-Message Utilisateur -> Guardrail -> Prompt (RAG + Tools) -> LLM Stream -> ToolExecutor -> Persistance.
+Message Utilisateur -> Guardrail -> Prompt (RAG + Tools) -> LLM Stream / Graphe Anti-Hallucination -> ToolExecutor -> Persistance.
 """
 import logging
-from typing import Generator, Optional
+from typing import Any, Generator, Optional
 
 from src.config import config
+from src.galerelm.graph import AntiHallucinationWorkflow, HallucinationGrader
 from src.galerelm.intent_classifier import IntentGuardrail
 from src.galerelm.models import (
     Chat,
@@ -28,7 +29,7 @@ class ChatEngine:
     """
     Service d'orchestration d'une conversation avec le LLM.
     Centralise tout le pipeline :
-    User Message -> Guardrail -> Prompt (RAG + Tools) -> LLM Stream -> ToolExecutor -> Persistence.
+    User Message -> Guardrail -> Prompt (RAG + Tools) -> LLM Stream (ou AntiHallucinationWorkflow) -> ToolExecutor -> Persistence.
     """
 
     def __init__(
@@ -37,6 +38,8 @@ class ChatEngine:
         model: str = None,
         tool_registry: Optional[ToolRegistry] = None,
         guardrail: Optional[IntentGuardrail] = None,
+        hallucination_grader: Optional[HallucinationGrader] = None,
+        max_hallucination_retries: int = 2,
         blocked_responses: Optional[dict[str, str]] = None,
         rag_top_k: int = 3,
     ):
@@ -45,13 +48,22 @@ class ChatEngine:
         self.tool_registry = tool_registry
         self.tool_executor = ToolExecutor(tool_registry) if tool_registry else None
         self.guardrail = guardrail
+        self.hallucination_grader = hallucination_grader
+        self.max_hallucination_retries = max_hallucination_retries
         self.blocked_responses = blocked_responses or {}
         self.rag_top_k = rag_top_k
         self.last_response: Optional[ChatResponse] = None
+        self.last_graph_state: Optional[dict[str, Any]] = None
 
     def set_tool_registry(self, registry: Optional[ToolRegistry]) -> None:
         self.tool_registry = registry
         self.tool_executor = ToolExecutor(registry) if registry else None
+
+    def enable_anti_hallucination(self, max_retries: int = 2) -> "ChatEngine":
+        """Active le graphe par nœuds AntiHallucinationWorkflow sur ce moteur."""
+        self.hallucination_grader = HallucinationGrader(api=self.api, model=self.model)
+        self.max_hallucination_retries = max_retries
+        return self
 
     # ── 1. Construction du Prompt (Profil + RAG + Outils) ────────────
 
@@ -159,6 +171,7 @@ class ChatEngine:
         profile: Profile,
         context: Context,
         llm: Chat,
+        execute_tools: bool = True,
     ) -> Optional[Message]:
         """
         Enregistre la réponse de l'assistant dans le contexte et exécute les éventuels outils.
@@ -178,10 +191,45 @@ class ChatEngine:
         context.add(persisted_msg, api_client=self.api)
         session.commit()
 
-        self._execute_tool_calls(session, profile, context, assistant_msg)
+        if execute_tools:
+            self._execute_tool_calls(session, profile, context, assistant_msg)
         return assistant_msg
 
-    # ── 5. Pipeline d'exécution (Stream & Bloquant) ──────────────────
+    # ── 5. Exécution par Nœuds (AntiHallucinationWorkflow) ───────────
+
+    def run_workflow_turn(
+        self,
+        session,
+        profile: Profile,
+        context: Context,
+        user_prompt: str,
+    ) -> dict[str, Any]:
+        """
+        Exécute le tour de conversation à travers le graphe de nœuds AntiHallucinationWorkflow
+        (retrieve -> generate -> tools -> grade -> regenerate/accept) et persiste le résultat validé.
+        """
+        context.add(Message(role="user", content=user_prompt), api_client=self.api)
+        session.commit()
+
+        workflow = AntiHallucinationWorkflow(
+            api=self.api,
+            model=self.model,
+            grader=self.hallucination_grader,
+            tool_registry=self.tool_registry,
+            rag_top_k=self.rag_top_k,
+            max_retries=self.max_hallucination_retries,
+        )
+        final_state = workflow.run(session, profile, context, user_prompt)
+        self.last_graph_state = final_state
+
+        last_llm: Optional[Chat] = final_state.get("last_llm")
+        if last_llm is not None:
+            # Les outils ont déjà été exécutés dans le nœud 'tools' du graphe s'il y en avait
+            self.persist_response(session, profile, context, last_llm, execute_tools=False)
+
+        return final_state
+
+    # ── 6. Pipeline d'exécution (Stream & Bloquant) ──────────────────
 
     def stream_turn(
         self,
@@ -191,8 +239,11 @@ class ChatEngine:
         user_prompt: str,
     ) -> Generator[str, None, Optional[ChatResponse]]:
         """
-        Exécute un tour complet en streaming :
-        User Message -> Guardrail -> Prompt (RAG + Tools) -> LLM Stream -> ToolExecutor -> Persistence.
+        Exécute un tour complet :
+        - Vérifie d'abord IntentGuardrail.
+        - Si hallucination_grader est activé, exécute le graphe de nœuds AntiHallucinationWorkflow
+          et yield la réponse vérifiée.
+        - Sinon, streame directement les tokens en temps réel depuis Chat.
         """
         refusal = self.check_guardrail(user_prompt)
         if refusal is not None:
@@ -214,6 +265,13 @@ class ChatEngine:
                 eval_duration=0,
             )
             yield refusal
+            return self.last_response
+
+        if self.hallucination_grader is not None:
+            state = self.run_workflow_turn(session, profile, context, user_prompt)
+            answer = state.get("candidate_answer", "")
+            if answer:
+                yield answer
             return self.last_response
 
         llm = self.prepare_chat(session, profile, context, user_prompt)

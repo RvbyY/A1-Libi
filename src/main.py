@@ -10,6 +10,7 @@ from src.commands import CommandRegistry, default_registry
 from src.config import config
 from src.galerelm.database import DatabaseManager
 from src.galerelm.engine import ChatEngine
+from src.galerelm.graph import HallucinationGrader
 from src.galerelm.intent_classifier import IntentGuardrail
 from src.galerelm.models import Context, Profile, Prompt
 from src.galerelm.session_manager import SessionManager
@@ -40,6 +41,9 @@ class SensAI:
         tool_registry: Optional[ToolRegistry] = None,
         guardrail: Optional[IntentGuardrail] = None,
         use_guardrail: bool = False,
+        hallucination_grader: Optional[HallucinationGrader] = None,
+        use_anti_hallucination: bool = False,
+        max_hallucination_retries: int = 2,
     ):
         resolved_model = model or config.DEFAULT_MODEL
         api_url = api_url or config.OLLAMA_HOST
@@ -62,11 +66,17 @@ class SensAI:
         if resolved_guardrail is None and use_guardrail:
             resolved_guardrail = IntentGuardrail(api=self.api, model=resolved_model)
 
+        resolved_grader = hallucination_grader
+        if resolved_grader is None and use_anti_hallucination:
+            resolved_grader = HallucinationGrader(api=self.api, model=resolved_model)
+
         self.chat_engine = ChatEngine(
             api=self.api,
             model=resolved_model,
             tool_registry=self.tools,
             guardrail=resolved_guardrail,
+            hallucination_grader=resolved_grader,
+            max_hallucination_retries=max_hallucination_retries,
         )
 
         # ── 4. Commandes du terminal ─────────────────────────────────
@@ -83,6 +93,11 @@ class SensAI:
             model=self.model,
             policy=policy,
         )
+        return self
+
+    def enable_anti_hallucination(self, max_retries: int = 2) -> "SensAI":
+        """Active le graphe par nœuds AntiHallucinationWorkflow sur le ChatEngine."""
+        self.chat_engine.enable_anti_hallucination(max_retries=max_retries)
         return self
 
     @property
