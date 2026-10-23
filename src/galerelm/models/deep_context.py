@@ -14,7 +14,6 @@ from src.galerelm.rag import EmbeddingService, RAGManager
 
 logger = logging.getLogger("galerelm.models.deep_context")
 
-DEFAULT_EMBED_MODEL = config.EMBED_MODEL
 cosine_similarity = EmbeddingService.cosine_similarity
 
 
@@ -27,12 +26,15 @@ class DeepContext(Base):
 
     id: int = Column(Integer, primary_key=True, autoincrement=True)
     profile_id: str = Column(String, ForeignKey("profiles.id"), nullable=False)
-    vector_limit: int = Column(Integer, default=config.DEEP_CONTEXT_LIMIT)
-    embed_model: str = Column(String, default=DEFAULT_EMBED_MODEL)
+    vector_limit: int = Column(Integer, default=lambda: config.DEEP_CONTEXT_LIMIT)
+    embed_model: str = Column(String, default=lambda: config.EMBED_MODEL)
 
     memories = relationship("LongTermMemory", backref="deep_context", cascade="all, delete-orphan")
 
-    def __init__(self, vector_limit: int = config.DEEP_CONTEXT_LIMIT, embed_model: str = DEFAULT_EMBED_MODEL):
+    def __init__(self, vector_limit: int = None, embed_model: str = None):
+        # Résolus à l'exécution pour prendre en compte la config YAML / CLI chargée au démarrage
+        vector_limit = vector_limit if vector_limit is not None else config.DEEP_CONTEXT_LIMIT
+        embed_model = embed_model or config.EMBED_MODEL
         self.vector_limit = vector_limit
         self.embed_model = embed_model
         logger.debug(f"Initialized DeepContext (model={embed_model}, limit={vector_limit})")
