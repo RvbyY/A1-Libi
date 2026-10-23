@@ -186,7 +186,22 @@ def parse_args(argv: Optional[list[str]] = None) -> argparse.Namespace:
         "--skip-check", action="store_true",
         help="Ne pas vérifier la disponibilité d'Ollama et du modèle au démarrage.",
     )
-    return parser.parse_args(argv)
+    parser.add_argument(
+        "--anti-hallucination", action="store_true",
+        help="Vérifie chaque réponse avec un LLM juge et la régénère si elle n'est pas ancrée dans les faits.",
+    )
+    parser.add_argument(
+        "--max-retries", type=int, metavar="N",
+        help="Nombre max de régénérations anti-hallucination (défaut : 2). Requiert --anti-hallucination.",
+    )
+    args = parser.parse_args(argv)
+
+    if args.max_retries is not None:
+        if not args.anti_hallucination:
+            parser.error("--max-retries requiert --anti-hallucination.")
+        if args.max_retries < 0:
+            parser.error("--max-retries doit être positif ou nul.")
+    return args
 
 
 def load_config(args: argparse.Namespace) -> None:
@@ -216,7 +231,10 @@ def main(argv: Optional[list[str]] = None) -> int:
         print(f"[!] Configuration invalide : {exc}", file=sys.stderr)
         return 2
 
-    sensai = SensAI()
+    sensai = SensAI(
+        use_anti_hallucination=args.anti_hallucination,
+        max_hallucination_retries=args.max_retries if args.max_retries is not None else 2,
+    )
 
     if not args.skip_check:
         try:

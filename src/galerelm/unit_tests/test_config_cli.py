@@ -87,3 +87,49 @@ def test_main_stops_when_model_is_missing(fresh_config, monkeypatch, capsys):
     assert "'llama3.2' n'est pas installé" in err
     assert "ollama pull llama3.2" in err
     assert "mistral:latest" in err
+
+
+class RecordingREPL:
+    """Remplace TerminalREPL : mémorise l'instance SensAI construite par main() sans lancer la boucle."""
+    app = None
+
+    def __init__(self, app):
+        RecordingREPL.app = app
+
+    def run(self):
+        pass
+
+
+def run_main_without_repl(monkeypatch, argv):
+    monkeypatch.setattr("src.main.TerminalREPL", RecordingREPL)
+    RecordingREPL.app = None
+    assert main(argv + ["--skip-check", "--db", "sqlite:///:memory:"]) == 0
+    return RecordingREPL.app
+
+
+def test_anti_hallucination_disabled_by_default(fresh_config, monkeypatch):
+    app = run_main_without_repl(monkeypatch, [])
+    assert app.chat_engine.hallucination_grader is None
+
+
+def test_anti_hallucination_flag_enables_workflow(fresh_config, monkeypatch):
+    app = run_main_without_repl(monkeypatch, ["--anti-hallucination"])
+    assert app.chat_engine.hallucination_grader is not None
+    assert app.chat_engine.max_hallucination_retries == 2
+
+
+def test_max_retries_is_forwarded(fresh_config, monkeypatch):
+    app = run_main_without_repl(monkeypatch, ["--anti-hallucination", "--max-retries", "5"])
+    assert app.chat_engine.max_hallucination_retries == 5
+
+
+@pytest.mark.parametrize("argv, message", [
+    (["--max-retries", "3"], "requiert --anti-hallucination"),
+    (["--anti-hallucination", "--max-retries", "-1"], "positif ou nul"),
+    (["--anti-hallucination", "--max-retries", "deux"], "invalid int value"),
+])
+def test_invalid_max_retries_is_rejected(argv, message, capsys):
+    with pytest.raises(SystemExit) as info:
+        parse_args(argv)
+    assert info.value.code == 2
+    assert message in capsys.readouterr().err
