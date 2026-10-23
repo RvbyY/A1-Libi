@@ -21,7 +21,7 @@ jobs:
     if: |
       github.ref == 'refs/heads/main' &&
       github.event_name == 'push' &&
-      github.repository == 'RvbyY/SensAI'
+      github.repository == 'RvbyY/A1-Libi'
     steps:
       - name: Checkout
         uses: actions/checkout@v4
