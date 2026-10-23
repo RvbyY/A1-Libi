@@ -7,6 +7,7 @@ from src.galerelm.graph import (
 )
 from src.galerelm.models import LongTermMemory
 from src.main import SensAI
+from src.webapp.visualizer import PipelineVisualizer
 
 
 class SequencedStreamAPI:
@@ -108,3 +109,29 @@ def test_anti_hallucination_workflow_regenerates_on_hallucination():
     sys_msg = second_generate_payload["messages"][0]["content"]
     assert "CORRECTION ANTI-HALLUCINATION REQUISE" in sys_msg
     assert "Lyon" in sys_msg
+
+
+def test_pipeline_visualizer_tracks_realtime_events():
+    viz = PipelineVisualizer()
+    fake_api = SequencedStreamAPI([
+        "Tu habites à Lyon.",
+        '{"grounded": true, "critique": ""}',
+    ])
+
+    app = SensAI(db_url="sqlite:///:memory:", use_anti_hallucination=True)
+    app.api = fake_api
+    app.chat_engine.api = fake_api
+    app.chat_engine.hallucination_grader.api = fake_api
+    app.chat_engine.on_event = viz.mark
+    app.load_or_create_profile(email="viz@test.com", name="VizUser")
+
+    app.chat("Où j'habite ?")
+
+    assert viz.nodes["input"].state == "success"
+    assert viz.nodes["retrieve"].state == "success"
+    assert viz.nodes["generate"].state == "success"
+    assert viz.nodes["grade"].state == "success"
+    assert viz.nodes["persist"].state == "success"
+    html_out = viz.render_html()
+    assert "<svg" in html_out
+    assert "HallucinationGrader" in html_out

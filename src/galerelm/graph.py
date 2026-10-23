@@ -232,6 +232,7 @@ class AntiHallucinationWorkflow:
         tool_registry: Optional[ToolRegistry] = None,
         rag_top_k: int = 3,
         max_retries: int = 2,
+        on_event: Optional[Callable[[str, str, str], None]] = None,
     ):
         self.api = api
         self.model = model
@@ -240,7 +241,12 @@ class AntiHallucinationWorkflow:
         self.tool_executor = ToolExecutor(tool_registry) if tool_registry else None
         self.rag_top_k = rag_top_k
         self.max_retries = max_retries
+        self.on_event = on_event
         self.graph = self._build_graph()
+
+    def _emit(self, node_id: str, state: str, detail: str) -> None:
+        if self.on_event is not None:
+            self.on_event(node_id, state, detail)
 
     def _build_graph(self) -> CompiledGraph:
         builder = StateGraph()
@@ -276,6 +282,7 @@ class AntiHallucinationWorkflow:
 
     def node_retrieve(self, state: dict[str, Any]) -> dict[str, Any]:
         """Nœud 1 : Récupère les souvenirs pertinents depuis DeepContext via RAGManager."""
+        self._emit("retrieve", "active", "Recherche vectorielle RAG...")
         profile: Optional[Profile] = state.get("profile")
         user_prompt: str = state.get("user_prompt", "")
         memories: list[str] = []
@@ -288,6 +295,7 @@ class AntiHallucinationWorkflow:
             except Exception as exc:
                 logger.warning(f"[Workflow.retrieve] Recherche RAG échouée : {exc}")
 
+        self._emit("retrieve", "success", f"{len(memories)} souvenir(s) trouvé(s)")
         return {
             "memories": memories,
             "tool_outputs": [],
@@ -305,6 +313,11 @@ class AntiHallucinationWorkflow:
         critique: str = state.get("critique", "")
         retries: int = state.get("retries", 0)
 
+        self._emit(
+            "prompt",
+            "active",
+            "Correction avec critique" if critique else "Assemblage PromptBuilder",
+        )
         p_builder = (
             PromptBuilder()
             .with_profile(profile)
@@ -320,12 +333,20 @@ class AntiHallucinationWorkflow:
                 "Corrige-la en respectant strictement les faits connus sans rien inventer."
             ])
 
+        built_prompt = p_builder.build()
+        self._emit(
+            "prompt",
+            "success",
+            f"RAG:{built_prompt.memories_injected} Tools:{built_prompt.tools_injected}",
+        )
+
+        self._emit("generate", "active", f"Génération LLM (essai #{retries + 1})...")
         llm = Chat(
             model=self.model,
             api=self.api,
             messages=context.get_messages_copy(),
             tools=self.tool_registry.to_tools_list() if self.tool_registry else None,
-            system_prompt=p_builder.build(),
+            system_prompt=built_prompt,
         )
 
         tokens: list[str] = []
@@ -333,6 +354,7 @@ class AntiHallucinationWorkflow:
             tokens.append(token)
 
         candidate = "".join(tokens)
+        self._emit("generate", "success", f"{len(candidate)} caractères générés")
         return {
             "candidate_answer": candidate,
             "last_llm": llm,
@@ -342,6 +364,7 @@ class AntiHallucinationWorkflow:
 
     def node_tools(self, state: dict[str, Any]) -> dict[str, Any]:
         """Nœud 3 : Exécute les appels d'outils demandés par le LLM via ToolExecutor."""
+        self._emit("tools", "active", "Exécution des tool_calls...")
         last_response: Optional[ChatResponse] = state.get("last_response")
         profile: Optional[Profile] = state.get("profile")
         context: Context = state["context"]
@@ -358,10 +381,12 @@ class AntiHallucinationWorkflow:
         )
         results = self.tool_executor.execute_calls(last_response.message, tool_ctx)
         outputs = [f"[{name}] {res.message}" for name, res in results]
+        self._emit("tools", "success", f"{len(outputs)} outil(s) exécuté(s)")
         return {"tool_outputs": outputs}
 
     def node_grade(self, state: dict[str, Any]) -> dict[str, Any]:
         """Nœud 4 : Vérifie l'absence d'hallucination dans la réponse candidate."""
+        self._emit("grade", "active", "Vérification factuelle...")
         user_prompt: str = state["user_prompt"]
         candidate: str = state.get("candidate_answer", "")
         facts: list[str] = list(state.get("memories", [])) + list(state.get("tool_outputs", []))
@@ -375,6 +400,10 @@ class AntiHallucinationWorkflow:
             f"[Workflow.grade] grounded={grade_result.grounded} "
             f"(essai {state.get('retries', 1)}/{self.max_retries + 1})"
         )
+        if grade_result.grounded:
+            self._emit("grade", "success", "Ancré dans les faits (grounded)")
+        else:
+            self._emit("grade", "warning", f"Hallucination: {grade_result.critique}")
         return {
             "grounded": grade_result.grounded,
             "critique": grade_result.critique,

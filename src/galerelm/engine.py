@@ -4,7 +4,7 @@ Orchestrateur central (ChatEngine) gérant le cycle complet d'un tour de convers
 Message Utilisateur -> Guardrail -> Prompt (RAG + Tools) -> LLM Stream / Graphe Anti-Hallucination -> ToolExecutor -> Persistance.
 """
 import logging
-from typing import Any, Generator, Optional
+from typing import Any, Callable, Generator, Optional
 
 from src.config import config
 from src.galerelm.graph import AntiHallucinationWorkflow, HallucinationGrader
@@ -42,6 +42,7 @@ class ChatEngine:
         max_hallucination_retries: int = 2,
         blocked_responses: Optional[dict[str, str]] = None,
         rag_top_k: int = 3,
+        on_event: Optional[Callable[[str, str, str], None]] = None,
     ):
         self.api = api
         self.model = model or config.DEFAULT_MODEL
@@ -52,8 +53,14 @@ class ChatEngine:
         self.max_hallucination_retries = max_hallucination_retries
         self.blocked_responses = blocked_responses or {}
         self.rag_top_k = rag_top_k
+        self.on_event = on_event
         self.last_response: Optional[ChatResponse] = None
         self.last_graph_state: Optional[dict[str, Any]] = None
+        self.last_built_prompt: Optional[Prompt] = None
+
+    def _emit(self, node_id: str, state: str, detail: str = "") -> None:
+        if self.on_event:
+            self.on_event(node_id, state, detail)
 
     def set_tool_registry(self, registry: Optional[ToolRegistry]) -> None:
         self.tool_registry = registry
@@ -79,8 +86,14 @@ class ChatEngine:
         if self.tool_registry:
             builder.with_tools(self.tool_registry)
         if query:
+            self._emit("retrieve", "active", f"Recherche RAG top-{self.rag_top_k}")
             builder.with_rag(profile, query, self.api, top_k=self.rag_top_k)
-        return builder.build()
+            self._emit("retrieve", "success", "Contexte vectoriel extrait")
+        self._emit("prompt", "active", "Assemblage PromptBuilder")
+        built = builder.build()
+        self.last_built_prompt = built
+        self._emit("prompt", "success", f"Prompt prêt ({len(built.render_system())} car.)")
+        return built
 
     def _get_tools_list(self) -> ToolsList:
         """Convertit les outils du ToolRegistry en ToolsList via to_tools_list()."""
@@ -97,20 +110,34 @@ class ChatEngine:
         ou None si la requête est autorisée à poursuivre vers le LLM.
         """
         if self.guardrail is None:
+            self._emit("guardrail", "success", "Guardrail désactivé (LEGAL)")
             return None
 
+        self._emit("guardrail", "active", "Analyse d'intention en cours...")
         if self.blocked_responses:
             category = self.guardrail.classify(user_prompt)
             logger.info(f"[ChatEngine] Intention classifiée : {category}")
-            return self.blocked_responses.get(category)
+            refusal = self.blocked_responses.get(category)
+            self._emit(
+                "guardrail",
+                "error" if refusal else "success",
+                f"Catégorie : {category}",
+            )
+            return refusal
 
         if hasattr(self.guardrail, "evaluate") and callable(self.guardrail.evaluate):
             decision = self.guardrail.evaluate(user_prompt)
             logger.info(f"[ChatEngine] Intention classifiée : {decision.category} (allowed={decision.allowed})")
+            self._emit(
+                "guardrail",
+                "success" if decision.allowed else "error",
+                f"Catégorie : {decision.category}",
+            )
             return decision.refusal_message
 
         category = self.guardrail.classify(user_prompt)
         logger.info(f"[ChatEngine] Intention classifiée : {category}")
+        self._emit("guardrail", "success", f"Catégorie : {category}")
         return None
 
     # ── 3. Préparation de la requête Chat ────────────────────────────
@@ -149,8 +176,10 @@ class ChatEngine:
     ) -> list[str]:
         """Délègue l'exécution des tool_calls à ToolExecutor et retourne les messages produits."""
         if not self.tool_regex_ready() or not assistant_msg.tool_calls:
+            self._emit("tools", "idle", "Aucun appel d'outil")
             return []
 
+        self._emit("tools", "active", f"Exécution de {len(assistant_msg.tool_calls)} outil(s)")
         tool_ctx = self.tool_executor.build_tool_context(
             profile=profile,
             session=session,
@@ -158,6 +187,7 @@ class ChatEngine:
             api=self.api,
         )
         results = self.tool_executor.execute_calls(assistant_msg, tool_ctx)
+        self._emit("tools", "success", f"{len(results)} outil(s) terminé(s)")
         return [f"[{name}] {res.message}" for name, res in results]
 
     def tool_regex_ready(self) -> bool:
@@ -193,6 +223,7 @@ class ChatEngine:
 
         if execute_tools:
             self._execute_tool_calls(session, profile, context, assistant_msg)
+        self._emit("persist", "success", "Réponse sauvegardée en BDD")
         return assistant_msg
 
     # ── 5. Exécution par Nœuds (AntiHallucinationWorkflow) ───────────
@@ -218,9 +249,11 @@ class ChatEngine:
             tool_registry=self.tool_registry,
             rag_top_k=self.rag_top_k,
             max_retries=self.max_hallucination_retries,
+            on_event=self.on_event,
         )
         final_state = workflow.run(session, profile, context, user_prompt)
         self.last_graph_state = final_state
+        self.last_built_prompt = final_state.get("built_prompt")
 
         last_llm: Optional[Chat] = final_state.get("last_llm")
         if last_llm is not None:
@@ -245,11 +278,13 @@ class ChatEngine:
           et yield la réponse vérifiée.
         - Sinon, streame directement les tokens en temps réel depuis Chat.
         """
+        self._emit("input", "success", f"Message reçu ({len(user_prompt)} car.)")
         refusal = self.check_guardrail(user_prompt)
         if refusal is not None:
             context.add(Message(role="user", content=user_prompt), api_client=self.api)
             context.add(Message(role="assistant", content=refusal), api_client=self.api)
             session.commit()
+            self._emit("persist", "warning", "Refus Guardrail enregistré")
             self.last_response = ChatResponse(
                 model=self.model,
                 created_at="",
@@ -275,10 +310,12 @@ class ChatEngine:
             return self.last_response
 
         llm = self.prepare_chat(session, profile, context, user_prompt)
+        self._emit("generate", "active", f"Streaming depuis {self.model}...")
 
         for token in llm.execute_stream():
             yield token
 
+        self._emit("generate", "success", "Génération terminée")
         self.persist_response(session, profile, context, llm)
         return self.last_response
 
