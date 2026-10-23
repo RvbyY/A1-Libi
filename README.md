@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="docs/assets/logo.svg" width="120" alt="Logo A1Libi" />
+  <img src="docs/assets/A1-Libi.svg" width="120" alt="Logo A1Libi" />
 </p>
 
 <h1 align="center">A1Libi</h1>
