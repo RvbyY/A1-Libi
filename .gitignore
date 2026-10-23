@@ -14,6 +14,7 @@ pyvenv.cfg
 
 .env
 .venv/
+.gradio/
 __pycache__/
 *.pyc
 ollama.log

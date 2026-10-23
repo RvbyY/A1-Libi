@@ -18,27 +18,27 @@ Scheduled AI Tasks
 The assistant can register tasks that should be executed later or repeatedly, persist them, and run them at the appropriate time.
 
 **How our implementation matches it:**  
-SensAI supports scheduled AI tasks through the `/schedule` CLI command. Tasks are persisted in the database as `ScheduledTask` records and executed by a background `TaskRunner`. Scheduled prompts reuse the existing SensAI chat/Ollama execution flow.
+A1Libi supports scheduled AI tasks through the `/schedule` CLI command. Tasks are persisted in the database as `ScheduledTask` records and executed by a background `TaskRunner`. Scheduled prompts reuse the existing A1Libi chat/Ollama execution flow.
 
 ---
 
 ## Why This Feature?
 
-This feature allows users to ask SensAI to execute prompts later instead of only responding immediately during a live conversation.
+This feature allows users to ask A1Libi to execute prompts later instead of only responding immediately during a live conversation.
 
 It is useful for learning workflows, reminders, recurring summaries, and repeated AI-generated exercises.
 
 ### Real-World Use Case
 
-A user learning Japanese can ask SensAI to generate a short quiz every day at 18:00 or remind them in 30 minutes to revise kanji.
+A user learning Japanese can ask A1Libi to generate a short quiz every day at 18:00 or remind them in 30 minutes to revise kanji.
 
 ---
 
 ## User Story 1
 
-**As a** SensAI user,  
+**As a** A1Libi user,  
 **I want to** schedule a one-time AI task from the terminal,  
-**so that** SensAI can execute a prompt later without me manually asking again.
+**so that** A1Libi can execute a prompt later without me manually asking again.
 
 ### Acceptance Criteria
 
@@ -52,9 +52,9 @@ A user learning Japanese can ask SensAI to generate a short quiz every day at 18
 
 ## User Story 2
 
-**As a** SensAI user,  
+**As a** A1Libi user,  
 **I want to** create recurring scheduled AI tasks,  
-**so that** SensAI can automatically repeat useful prompts over time.
+**so that** A1Libi can automatically repeat useful prompts over time.
 
 ### Acceptance Criteria
 
@@ -77,7 +77,7 @@ The scheduling feature is split into four parts:
 3. `TaskRunner` runs independently from the REPL loop and periodically executes due tasks.
 4. `ScheduleCommand` exposes the feature through the CLI command framework.
 
-The scheduler reuses the existing SensAI chat flow by executing scheduled prompts through the same agent/Ollama path as normal user prompts.
+The scheduler reuses the existing A1Libi chat flow by executing scheduled prompts through the same agent/Ollama path as normal user prompts.
 
 ### Main files / components
 
@@ -93,7 +93,7 @@ The scheduler reuses the existing SensAI chat flow by executing scheduled prompt
 
 - SQLAlchemy
 - SQLite
-- Existing SensAI chat/Ollama execution flow
+- Existing A1Libi chat/Ollama execution flow
 - Existing CLI command framework
 
 ---
@@ -146,12 +146,12 @@ Putting scheduling directly in the REPL would mix terminal input logic with back
 ## Demo / Keynote
 
 **Scenario:**  
-A user schedules SensAI to execute a prompt automatically from the CLI.
+A user schedules A1Libi to execute a prompt automatically from the CLI.
 
 **What we will demonstrate:**  
 
 - `/schedule in 10s dis bonjour`
-- SensAI persists the task.
+- A1Libi persists the task.
 - The background runner detects the due task.
 - The scheduled prompt is executed through the existing chat/Ollama flow.
 - A recurring task such as `/schedule every 10s dis bonjour` is re-scheduled after execution.

@@ -1,0 +1,92 @@
+#!/usr/bin/env sh
+
+set -e
+cd "$(dirname "$0")/.."
+
+# ── Style ─────────────────────────────────────────────────
+# printf plutôt que $'...' : compatible sh (dash sur Linux), pas seulement bash
+if [ -t 1 ]; then
+    RED=$(printf '\033[31m')  GREEN=$(printf '\033[32m')  YELLOW=$(printf '\033[33m')
+    CYAN=$(printf '\033[36m') BOLD=$(printf '\033[1m')    RESET=$(printf '\033[0m')
+else
+    RED='' GREEN='' YELLOW='' CYAN='' BOLD='' RESET=''
+fi
+
+info()    { echo "${CYAN}[*]${RESET} $*"; }
+step()    { echo "${BOLD}[+]${RESET} $*"; }
+success() { echo "${GREEN}[✓]${RESET} $*"; }
+warn()    { echo "${YELLOW}[!]${RESET} $*"; }
+error()   { echo "${RED}[!]${RESET} $*" >&2; }
+
+# ── functions ─────────────────────────────────────────────────
+
+setupProject()
+{
+    if ! command -v docker > /dev/null; then
+        error "Docker n'est pas installé : https://docs.docker.com/get-docker/"
+        exit 1
+    fi
+
+    if [ ! -f .env ]; then
+        step "Creating .env from .env.exemple..."
+        cp .env.exemple .env
+    else
+        info ".env already exists."
+    fi
+
+    step "Building images..."
+    docker compose build --quiet
+
+    echo
+    success "Setup complete. Start with: ${BOLD}./scripts/A1Libi -run${RESET}"
+}
+
+run()
+{
+    step "Starting everything..."
+    info "First run: models are downloading, this can take several minutes (follow with -logs)."
+    docker compose up --build -d --quiet-pull
+    success "Running → http://localhost:7860  (logs: ./scripts/A1Libi -logs)"
+}
+
+clean()
+{
+    warn "Removing containers AND volumes (models will be re-downloaded)..."
+    docker compose down -v 
+}
+
+stop()
+{
+    step "Stopping everything..."
+    docker compose down
+}
+
+# ── Main ─────────────────────────────────────────────────
+
+usage()
+{
+    echo "${BOLD}Usage:${RESET} $0 <option>"
+    echo
+    echo "  ${CYAN}-setup${RESET}   check Docker, create .env, build images"
+    echo "  ${CYAN}-run${RESET}     start everything (Ollama + models + web app)"
+    echo "  ${CYAN}-stop${RESET}    stop everything"
+    echo "  ${CYAN}-logs${RESET}    follow the logs"
+    echo "  ${CYAN}-cli${RESET}     start the CLI inside the app container"
+    echo "  ${CYAN}-clean${RESET}   stop + delete volumes ${YELLOW}(/!\\ downloaded models are lost)${RESET}"
+}
+
+main()
+{
+    case "$1" in
+        -setup) setupProject ;;
+        -run)   run ;;
+        -cli)   docker compose run --rm app python src/main.py ;;
+        -stop)  stop ;;
+        -clean) clean ;;
+        -logs)  docker compose logs -f ;;
+        "")     usage; exit 1 ;;
+        *)      error "Wrong option: $1"; echo; usage; exit 1 ;;
+    esac
+}
+
+main "$@"
