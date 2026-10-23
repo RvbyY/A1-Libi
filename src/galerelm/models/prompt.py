@@ -99,6 +99,29 @@ Requête :
 {user_input}
 """.strip()
 
+HALLUCINATION_GRADER_TEMPLATE = """
+Tu es un vérificateur factuel strict (Anti-Hallucination Grader).
+
+Faits de référence (Mémoire RAG et résultats d'outils) :
+{facts}
+
+Question de l'utilisateur :
+{user_input}
+
+Réponse candidate de l'assistant :
+{candidate}
+
+Évalue :
+1. grounded : false si la réponse candidate contredit les faits de référence ou invente des données factuelles absentes des faits de référence, true sinon.
+2. critique : Si grounded est false, explique brièvement quelle affirmation est hallucinée et comment la corriger. Sinon laisse vide "".
+
+Réponds UNIQUEMENT en JSON :
+{{
+  "grounded": true,
+  "critique": ""
+}}
+""".strip()
+
 
 class PromptTemplate:
     """
@@ -181,6 +204,11 @@ class PromptTemplate:
     def ambiguity_resolver(cls) -> "PromptTemplate":
         """Template de résolution d'ambiguïté (sortie LEGAL / ILLEGAL)."""
         return cls(template=AMBIGUITY_RESOLVER_TEMPLATE)
+
+    @classmethod
+    def hallucination_grader(cls) -> "PromptTemplate":
+        """Template d'évaluation anti-hallucination (sortie JSON grounded/critique)."""
+        return cls(template=HALLUCINATION_GRADER_TEMPLATE)
 
 
 class Prompt:

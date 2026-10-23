@@ -3,14 +3,19 @@ SensAI — Point d'entrée principal du framework LLM.
 Agît comme une façade légère assemblant DatabaseManager, SessionManager, ChatEngine,
 TaskManager/TaskRunner et CommandRegistry.
 """
+import argparse
 import logging
+import sys
+from pathlib import Path
 from typing import Generator, Optional
 
 from src.commands import CommandRegistry, default_registry
-from src.config import config
+from src.config import DEFAULT_CONFIG_FILE, ConfigError, config
 from src.galerelm.database import DatabaseManager
 from src.galerelm.engine import ChatEngine
+from src.galerelm.graph import HallucinationGrader
 from src.galerelm.intent_classifier import IntentGuardrail
+from src.galerelm.ollama import OllamaError, check_ollama
 from src.galerelm.models import Context, Profile, Prompt
 from src.galerelm.session_manager import SessionManager
 from src.rapideAPI import RapideAPI
@@ -40,6 +45,9 @@ class SensAI:
         tool_registry: Optional[ToolRegistry] = None,
         guardrail: Optional[IntentGuardrail] = None,
         use_guardrail: bool = False,
+        hallucination_grader: Optional[HallucinationGrader] = None,
+        use_anti_hallucination: bool = False,
+        max_hallucination_retries: int = 2,
     ):
         resolved_model = model or config.DEFAULT_MODEL
         api_url = api_url or config.OLLAMA_HOST
@@ -56,17 +64,23 @@ class SensAI:
         self.task_runner = TaskRunner(self.SessionLocal, executor=self.chat)
 
         # ── 3. Client API, Outils, Guardrail & Moteur d'orchestration ─
-        self.api = RapideAPI(base_url=api_url)
+        self.api = RapideAPI(base_url=api_url, timeout=config.OLLAMA_TIMEOUT)
         self.tools = tool_registry if tool_registry is not None else default_tool_registry()
         resolved_guardrail = guardrail
         if resolved_guardrail is None and use_guardrail:
             resolved_guardrail = IntentGuardrail(api=self.api, model=resolved_model)
+
+        resolved_grader = hallucination_grader
+        if resolved_grader is None and use_anti_hallucination:
+            resolved_grader = HallucinationGrader(api=self.api, model=resolved_model)
 
         self.chat_engine = ChatEngine(
             api=self.api,
             model=resolved_model,
             tool_registry=self.tools,
             guardrail=resolved_guardrail,
+            hallucination_grader=resolved_grader,
+            max_hallucination_retries=max_hallucination_retries,
         )
 
         # ── 4. Commandes du terminal ─────────────────────────────────
@@ -83,6 +97,11 @@ class SensAI:
             model=self.model,
             policy=policy,
         )
+        return self
+
+    def enable_anti_hallucination(self, max_retries: int = 2) -> "SensAI":
+        """Active le graphe par nœuds AntiHallucinationWorkflow sur le ChatEngine."""
+        self.chat_engine.enable_anti_hallucination(max_retries=max_retries)
         return self
 
     @property
@@ -150,8 +169,85 @@ class SensAI:
 
 # ── Point d'entrée ───────────────────────────────────────────────────
 
-if __name__ == "__main__":
+def parse_args(argv: Optional[list[str]] = None) -> argparse.Namespace:
+    parser = argparse.ArgumentParser(
+        prog="sensai",
+        description="SensAI — assistant IA local reposant sur l'API HTTP d'Ollama.",
+    )
+    parser.add_argument("-m", "--model", help="Modèle Ollama à utiliser (ex: llama3.2, qwen2.5:7b).")
+    parser.add_argument(
+        "-c", "--config",
+        help=f"Fichier de configuration YAML (défaut : ./{DEFAULT_CONFIG_FILE} s'il existe).",
+    )
+    parser.add_argument("--host", help="URL du serveur Ollama (ex: http://localhost:11434).")
+    parser.add_argument("--embed-model", help="Modèle d'embedding pour la mémoire long terme.")
+    parser.add_argument("--db", help="URL SQLAlchemy de la base de données.")
+    parser.add_argument(
+        "--skip-check", action="store_true",
+        help="Ne pas vérifier la disponibilité d'Ollama et du modèle au démarrage.",
+    )
+    parser.add_argument(
+        "--anti-hallucination", action="store_true",
+        help="Vérifie chaque réponse avec un LLM juge et la régénère si elle n'est pas ancrée dans les faits.",
+    )
+    parser.add_argument(
+        "--max-retries", type=int, metavar="N",
+        help="Nombre max de régénérations anti-hallucination (défaut : 2). Requiert --anti-hallucination.",
+    )
+    args = parser.parse_args(argv)
+
+    if args.max_retries is not None:
+        if not args.anti_hallucination:
+            parser.error("--max-retries requiert --anti-hallucination.")
+        if args.max_retries < 0:
+            parser.error("--max-retries doit être positif ou nul.")
+    return args
+
+
+def load_config(args: argparse.Namespace) -> None:
+    """Applique, par priorité croissante : YAML (--config ou config.yaml) puis arguments CLI."""
+    if args.config:
+        config.load_yaml(args.config)
+    elif Path(DEFAULT_CONFIG_FILE).is_file():
+        config.load_yaml(DEFAULT_CONFIG_FILE)
+
+    config.apply_overrides(
+        DEFAULT_MODEL=args.model,
+        OLLAMA_HOST=args.host,
+        EMBED_MODEL=args.embed_model,
+        DB_URL=args.db,
+    )
+
+
+def main(argv: Optional[list[str]] = None) -> int:
     logging.basicConfig(level=logging.ERROR)
-    sensai = SensAI()
+    # Les erreurs HTTP sont déjà présentées à l'utilisateur via OllamaError : inutile de les doubler en log
+    logging.getLogger("src.rapideAPI.client").setLevel(logging.CRITICAL)
+    args = parse_args(argv)
+
+    try:
+        load_config(args)
+    except ConfigError as exc:
+        print(f"[!] Configuration invalide : {exc}", file=sys.stderr)
+        return 2
+
+    sensai = SensAI(
+        use_anti_hallucination=args.anti_hallucination,
+        max_hallucination_retries=args.max_retries if args.max_retries is not None else 2,
+    )
+
+    if not args.skip_check:
+        try:
+            for warning in check_ollama(sensai.api, config.DEFAULT_MODEL, config.EMBED_MODEL):
+                print(f"[*] {warning}", file=sys.stderr)
+        except OllamaError as exc:
+            print(f"[!] {exc}", file=sys.stderr)
+            return 1
+
     sensai.load_or_create_profile()
     TerminalREPL(sensai).run()
+    return 0
+
+
+if __name__ == "__main__":
+    sys.exit(main())

@@ -54,6 +54,21 @@ La liste complète est dans [`.env.exemple`](../.env.exemple).
 > [!IMPORTANT]
 > Le nom du modèle doit être **exact**.
 > Une seule lettre fausse, et Ollama refuse la requête.
+> SensAI le vérifie au démarrage et affiche la commande `ollama pull` à lancer.
+
+### Optionnel : fichier `config.yaml`
+
+Au lieu du `.env`, vous pouvez copier [config.example.yaml](../config.example.yaml) en `config.yaml`.
+Il est chargé automatiquement au lancement.
+
+Vous pouvez aussi choisir le modèle directement en ligne de commande :
+
+```bash
+PYTHONPATH=. .venv/bin/python src/main.py --model llama3.2
+PYTHONPATH=. .venv/bin/python src/main.py --config mon_fichier.yaml
+```
+
+Ordre de priorité : **arguments CLI > `config.yaml` > `.env` > valeurs par défaut**.
 
 ---
 

@@ -1,0 +1,18 @@
+# Configuration SensAI — copiez ce fichier en config.yaml (chargé automatiquement)
+# ou passez-le explicitement avec : python src/main.py --config mon_fichier.yaml
+#
+# Priorité : arguments CLI > ce fichier > variables d'environnement (.env) > valeurs par défaut.
+# Toutes les clés sont optionnelles.
+
+ollama:
+  host: http://localhost:11434
+  model: llama3.2
+  embed_model: nomic-embed-text
+  timeout: 120          # secondes
+
+database:
+  url: sqlite:///galerelm.db
+
+memory:
+  context_limit: 10         # messages gardés en mémoire courte avant archivage
+  deep_context_limit: 4096  # entrées vectorielles max en mémoire long terme

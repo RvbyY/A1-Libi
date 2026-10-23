@@ -6,6 +6,7 @@ import logging
 from typing import TYPE_CHECKING, Optional
 
 from rich.console import Console, Group
+from rich.markup import escape
 from rich.panel import Panel
 from rich.table import Table
 from rich.text import Text
@@ -13,6 +14,7 @@ from rich.theme import Theme
 
 from src.commands.base import CommandResult
 from src.commands.registry import CommandRegistry
+from src.galerelm.ollama import OllamaError, translate_error
 
 if TYPE_CHECKING:
     from src.main import SensAI
@@ -88,7 +90,19 @@ class TerminalREPL:
                 self.console.print(token, end="", style="hack", markup=False)
             self.console.print()
         except Exception as exc:
-            self.console.print(f"\n[hack.error]\\[!] Erreur de connexion : {exc}[/]")
+            error = translate_error(exc, host=self.app.api.base_url, model=self.app.model)
+            if not isinstance(error, OllamaError):
+                logger.exception("Erreur inattendue pendant la génération")
+            self.print_error(error)
+
+    def print_error(self, error: Exception) -> None:
+        """Affiche une erreur (et sa suggestion de résolution pour les OllamaError)."""
+        if isinstance(error, OllamaError):
+            self.console.print(f"\n[hack.error]\\[!] {escape(error.message)}[/]")
+            if error.hint:
+                self.console.print(f"[hack.dim]    → {escape(error.hint)}[/]")
+        else:
+            self.console.print(f"\n[hack.error]\\[!] Erreur inattendue : {escape(str(error))}[/]")
 
     def run(self) -> None:
         """Lance la boucle principale d'interaction dans le terminal."""
