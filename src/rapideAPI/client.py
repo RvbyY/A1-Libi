@@ -69,6 +69,9 @@ class RapideAPI:
         logger.info(f"==> [POST STREAM] {url}")
         try:
             with self.session.stream("POST", url, data=data, json=json_data, **kwargs) as response:
+                if response.is_error:
+                    # Lit le corps pour que le message d'erreur d'Ollama reste accessible à l'appelant
+                    response.read()
                 response.raise_for_status()
                 for line in response.iter_lines():
                     if line:

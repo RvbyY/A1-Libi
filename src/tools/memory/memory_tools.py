@@ -1,142 +1,140 @@
-from collections.abc import Callable
-from typing import Any
+"""
+Module memory_tools.py
+Outils orientés objet permettant au LLM d'interagir avec la mémoire court terme
+et long terme (RAG) de la session active.
+"""
+from src.galerelm.models.message import MessageList
 from ..ITools import ToolContext, ToolResult, ToolsInterface
-from ...galerelm.models import Context, DeepContext
 
 
-class Memory(ToolsInterface):
-    def __init__(
-        self,
-        session_factory: Callable[[], Any],
-        api_client: Any | None = None,
-    ) -> None:
-        self._session_factory = session_factory
-        self._api_client = api_client
+class SearchMemoryTool(ToolsInterface):
+    """Recherche dans la mémoire à long terme (RAG / DeepContext) de l'utilisateur."""
 
     @property
     def name(self) -> str:
-        return "memory"
+        return "search_memory"
 
     @property
     def description(self) -> str:
-        return "Summarize, search, or clear a conversation's memory."
+        return "Search long-term persisted memory (RAG) for relevant past conversations."
 
     @property
     def parameters(self) -> dict:
         return {
             "type": "object",
             "properties": {
-                "action": {
-                    "type": "string",
-                    "enum": ["summarize", "search", "clear"],
-                    "description": "Memory operation to perform.",
-                },
-                "session_id": {
-                    "type": "string",
-                    "description": "Database id of the conversation context.",
-                },
                 "query": {
                     "type": "string",
-                    "description": "Search text, required for the search operation.",
+                    "description": "Search query to look up in long-term memory.",
+                },
+                "top_k": {
+                    "type": "integer",
+                    "description": "Maximum number of relevant memories to return (default: 5).",
                 },
             },
-            "required": ["action", "session_id"],
+            "required": ["query"],
         }
 
-    def summarize_session(self, session_id: str) -> str:
-        with self._session_factory() as session:
-            context = self._get_context(session, session_id)
-            if not context.messages:
-                return "La session ne contient aucun message."
+    def execute(self, context: ToolContext, arguments: dict) -> ToolResult:
+        query = str(arguments.get("query", "")).strip()
+        top_k = int(arguments.get("top_k", 5))
 
-            return "\n".join(
-                f"{message.role}: {message.content}" for message in context.messages
-            )
+        if not query:
+            return ToolResult(False, "query is required to search memory.")
 
-    def search_memory(self, session_id: str, query: str) -> list[dict]:
-        if not query.strip():
-            raise ValueError("query ne peut pas être vide.")
+        profile = context.profile
+        deep = getattr(profile, "deep_context", None) if profile else None
+        if not deep or not getattr(deep, "memories", None):
+            return ToolResult(True, "No long-term memories stored yet.", [])
 
-        with self._session_factory() as session:
-            context = self._get_context(session, session_id)
-            deep_context = (
-                session.query(DeepContext)
-                .filter_by(profile_id=context.profile_id)
-                .first()
-            )
+        try:
+            results = deep.search(query, context.api, top_k=top_k)
+        except Exception as exc:
+            return ToolResult(False, f"Memory search failed: {exc}")
 
-            if deep_context is None:
-                return []
-            if self._api_client is not None:
-                results = deep_context.search(query, self._api_client)
-                if results:
-                    return [
-                        {
-                            "id": memory.id,
-                            "role": memory.role,
-                            "content": memory.content,
-                            "score": score,
-                        }
-                        for score, memory in results
-                    ]
-            query_lower = query.casefold()
-            return [
-                {
-                    "id": memory.id,
-                    "role": memory.role,
-                    "content": memory.content,
-                    "score": None,
+        formatted = [
+            {"id": mem.id, "role": mem.role, "content": mem.content, "score": score}
+            for score, mem in results
+        ]
+        return ToolResult(
+            True,
+            f"Found {len(formatted)} relevant memory entries.",
+            formatted,
+        )
+
+
+class ClearSessionTool(ToolsInterface):
+    """Réinitialise la mémoire court terme (messages du contexte courant)."""
+
+    @property
+    def name(self) -> str:
+        return "clear_session"
+
+    @property
+    def description(self) -> str:
+        return "Clear the current short-term conversation context."
+
+    @property
+    def parameters(self) -> dict:
+        return {
+            "type": "object",
+            "properties": {},
+            "required": [],
+        }
+
+    def execute(self, context: ToolContext, arguments: dict) -> ToolResult:
+        del arguments
+        chat_ctx = context.context
+        if chat_ctx is None:
+            return ToolResult(False, "No active conversation context available.")
+
+        count = len(chat_ctx.messages)
+        chat_ctx.messages = MessageList([])
+        if context.session is not None:
+            context.session.commit()
+
+        return ToolResult(True, f"Cleared {count} messages from current session.")
+
+
+class SummarizeSessionTool(ToolsInterface):
+    """Génère un condensé structuré des messages présents dans la mémoire court terme."""
+
+    @property
+    def name(self) -> str:
+        return "summarize_session"
+
+    @property
+    def description(self) -> str:
+        return "Compress the current conversation history into a concise summary."
+
+    @property
+    def parameters(self) -> dict:
+        return {
+            "type": "object",
+            "properties": {
+                "max_chars": {
+                    "type": "integer",
+                    "description": "Maximum character length per message preview (default: 120).",
                 }
-                for memory in deep_context.memories
-                if query_lower in memory.content.casefold()
-            ]
+            },
+            "required": [],
+        }
 
-    def clear_session(self, session_id: str) -> bool:
-        with self._session_factory() as session:
-            context = self._get_context(session, session_id)
-            context.messages.clear()
-            session.commit()
-            return True
+    def execute(self, context: ToolContext, arguments: dict) -> ToolResult:
+        max_chars = int(arguments.get("max_chars", 120))
+        chat_ctx = context.context
+        if chat_ctx is None or not getattr(chat_ctx, "messages", None):
+            return ToolResult(True, "Current session is empty.", "")
 
-    @staticmethod
-    def _get_context(session: Any, session_id: str) -> Context:
-        try:
-            context_id = int(session_id)
-        except (TypeError, ValueError) as exc:
-            raise ValueError("session_id doit être un identifiant numérique.") from exc
+        lines = []
+        for idx, msg in enumerate(chat_ctx.messages, start=1):
+            flat = msg.content.replace("\n", " ").strip()
+            preview = flat if len(flat) <= max_chars else flat[:max_chars] + "..."
+            lines.append(f"{idx}. [{msg.role}] {preview}")
 
-        context = session.query(Context).filter_by(id=context_id).first()
-        if context is None:
-            raise ValueError(f"Session introuvable: {session_id}")
-        return context
-
-    def execute(self, context: ToolContext, payload: dict) -> ToolResult:
-        try:
-            action = payload.get("action")
-            session_id = payload.get("session_id")
-            if not isinstance(session_id, str) or not session_id:
-                raise ValueError("session_id est obligatoire.")
-
-            self._check_ownership(context, session_id)
-            if action == "summarize":
-                summary = self.summarize_session(session_id)
-                return ToolResult(True, "Session résumée.", summary)
-            if action == "search":
-                query = payload.get("query")
-                if not isinstance(query, str):
-                    raise ValueError("query est obligatoire pour une recherche.")
-                results = self.search_memory(session_id, query)
-                return ToolResult(True, f"{len(results)} mémoire(s) trouvée(s).", results)
-            if action == "clear":
-                self.clear_session(session_id)
-                return ToolResult(True, "Mémoire courte réinitialisée.")
-
-            raise ValueError("action doit être summarize, search ou clear.")
-        except (ValueError, TypeError) as exc:
-            return ToolResult(False, str(exc))
-
-    def _check_ownership(self, tool_context: ToolContext, session_id: str) -> None:
-        with self._session_factory() as session:
-            stored_context = self._get_context(session, session_id)
-            if stored_context.profile_id != tool_context.user_id:
-                raise ValueError("La session n'appartient pas à l'utilisateur courant.")
+        summary = "\n".join(lines)
+        return ToolResult(
+            True,
+            f"Summarized {len(lines)} message(s): {summary}",
+            summary,
+        )

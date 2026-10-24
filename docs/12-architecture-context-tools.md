@@ -198,14 +198,54 @@ src/tools/
 ├── memory/
 │   └── memory_tools.py          → Mémoire courte et longue
 └── tasks/
-    ├── create_task.py           → Réservé aux tâches
-    ├── complete_task.py         → Réservé aux tâches
-    └── send_task_file.py        → Réservé aux tâches
+    ├── create_task.py           → Création et planification
+    ├── complete_task.py         → Passage au statut completed
+    └── send_task_file.py        → Export JSON structuré
 ```
 
-Les trois fichiers dans `tasks/` sont actuellement vides.
+Les trois fichiers dans `tasks/` sont maintenant des tools indépendants.
 
-Ils ne sont donc pas encore des tools enregistrables.
+Ils peuvent être enregistrés séparément dans `ToolRegistry`.
+
+```python
+tools = [
+    CreateTask(session_factory),
+    CompleteTask(session_factory),
+    SendTaskFile(session_factory),
+]
+```
+
+Chaque tool reçoit une fabrique de sessions SQLAlchemy.
+
+Cela permet d'ouvrir une session courte pour chaque appel.
+
+---
+
+## ⏰ Architecture des tâches
+
+Les tâches sont sauvegardées dans le modèle `ScheduledTask`.
+
+Une tâche contient :
+
+| Propriété | Rôle |
+|---|---|
+| `id` | Identifiant UUID de la tâche |
+| `profile_id` | Propriétaire de la tâche |
+| `prompt` | Instruction à exécuter |
+| `scheduled_at` | Date et heure d'exécution |
+| `recurrence` | Règle de répétition optionnelle |
+| `status` | État de la tâche |
+
+Les tools utilisent `context.user_id` comme `profile_id`.
+
+Une tâche ne peut donc être lue ou modifiée que par son propriétaire.
+
+Les états utilisés par le système sont notamment :
+
+- `pending` ;
+- `completed` ;
+- `cancelled` ;
+- `failed`.
 
 ---
 
@@ -235,7 +275,11 @@ d'environnement.
 - Le tool email suppose un serveur SMTP local.
 - Les implémentations SMS, Slack et push du module générique sont des
   placeholders.
-- Les tools de tâches ne sont pas encore implémentés.
+- Les tools de tâches créent, complètent et exportent les tâches.
+- La création d'une tâche ne valide pas encore la syntaxe de `recurrence` ;
+  cette validation est appliquée par le gestionnaire lors de la répétition.
+- L'export de tâche retourne des données JSON compatibles, mais ne crée pas
+  encore un fichier physique ni un envoi vers un canal externe.
 
 ---
 

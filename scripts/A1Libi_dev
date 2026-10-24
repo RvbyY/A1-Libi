@@ -2,11 +2,156 @@
 
 cd "$(dirname "$0")/.." || exit 1
 
+VENV=.venv
+
+# ── Style ─────────────────────────────────────────────────
+if [ -t 1 ]; then
+    RED=$(printf '\033[31m')  GREEN=$(printf '\033[32m')  YELLOW=$(printf '\033[33m')
+    CYAN=$(printf '\033[36m') BOLD=$(printf '\033[1m')    RESET=$(printf '\033[0m')
+else
+    RED='' GREEN='' YELLOW='' CYAN='' BOLD='' RESET=''
+fi
+
+info()    { echo "${CYAN}[*]${RESET} $*"; }
+step()    { echo "${BOLD}[+]${RESET} $*"; }
+success() { echo "${GREEN}[✓]${RESET} $*"; }
+warn()    { echo "${YELLOW}[!]${RESET} $*"; }
+error()   { echo "${RED}[!]${RESET} $*" >&2; }
+
+# ── Helpers ─────────────────────────────────────────────────
+
+loadEnv()
+{
+    if [ ! -f .env ]; then
+        error ".env introuvable. Lance d'abord : ./scripts/A1Libi_dev -setup"
+        exit 1
+    fi
+    set -a
+    . ./.env
+    set +a
+}
+
+requireVenv()
+{
+    if [ ! -x "$VENV/bin/python" ]; then
+        error "Environnement Python absent. Lance d'abord : ./scripts/A1Libi_dev -setup"
+        exit 1
+    fi
+}
+
+# ── Setup / mise à jour ─────────────────────────────────────
+
+isPython312()
+{
+    "$1" -c 'import sys; sys.exit(sys.version_info < (3, 12))' 2>/dev/null
+}
+
+findPython()
+{
+    for candidate in "${PYTHON:-}" python3.12 python3; do
+        [ -n "$candidate" ] || continue
+        command -v "$candidate" > /dev/null 2>&1 || continue
+        if isPython312 "$candidate"; then
+            echo "$candidate"
+            return 0
+        fi
+    done
+    return 1
+}
+
+createVenv()
+{
+    if [ -x "$VENV/bin/python" ]; then
+        if ! isPython312 "$VENV/bin/python"; then
+            error "$VENV utilise $("$VENV/bin/python" --version 2>&1), il faut Python 3.12+. Lance : ./scripts/A1Libi_dev -reinstall"
+            exit 1
+        fi
+        info "Environnement Python déjà présent."
+        return
+    fi
+
+    if ! python=$(findPython); then
+        error "Python 3.12+ introuvable. Installe-le, ou indique-le : PYTHON=/chemin/python3.12 ./scripts/A1Libi_dev -setup"
+        exit 1
+    fi
+    step "Création de l'environnement Python ($VENV) avec $($python --version)..."
+    "$python" -m venv "$VENV"
+}
+
+installDeps()
+{
+    step "Installation des dépendances..."
+    "$VENV/bin/python" -m pip install --quiet --upgrade pip
+    "$VENV/bin/pip" install --quiet -r requirements.txt
+    success "Dépendances à jour."
+}
+
+syncEnv()
+{
+    if [ ! -f .env ]; then
+        step "Création de .env depuis .env.exemple..."
+        cp .env.exemple .env
+        return
+    fi
+
+    missing=""
+    for key in $(grep -E '^[A-Z_]+=' .env.exemple | cut -d= -f1); do
+        grep -qE "^$key=" .env || missing="$missing $key"
+    done
+
+    if [ -n "$missing" ]; then
+        warn "Variables présentes dans .env.exemple mais absentes de .env :${BOLD}$missing${RESET}"
+    else
+        info ".env à jour."
+    fi
+}
+
+setupProject()
+{
+    set -e
+    createVenv
+    installDeps
+    syncEnv
+
+    echo
+    success "Setup terminé."
+    echo
+    echo "Étapes suivantes (deux terminaux) :"
+    echo "  ${CYAN}./scripts/A1Libi_dev -back${RESET}"
+    echo "  ${CYAN}./scripts/A1Libi_dev -front${RESET}   (ou -cli)"
+}
+
+updateProject()
+{
+    set -e
+    step "Récupération des dernières modifications (git pull)..."
+    if ! git pull --ff-only; then
+        warn "git pull impossible (modifications locales ou branches divergentes). On continue avec le code actuel."
+    fi
+
+    requireVenv
+    installDeps
+    syncEnv
+    success "Projet à jour."
+}
+
+reinstallProject()
+{
+    set -e
+    warn "Suppression de l'environnement Python ($VENV)..."
+    rm -rf ./.venv
+    createVenv
+    installDeps
+    syncEnv
+    success "Réinstallation terminée."
+}
+
 # ── Backend ─────────────────────────────────────────────────
 
-StopBackend()
+stopBackend()
 {
-    echo -e "\n[+] Arrêt du backend..."
+    echo
+    step "Arrêt du backend..."
     [ "$STARTED_BY_SCRIPT" -eq 1 ] && kill "$OLLAMA_PID" 2>/dev/null
     exit 0
 }
@@ -16,11 +161,11 @@ startOllama()
     if pgrep -x "ollama" > /dev/null; then
         OLLAMA_PID=$(pgrep -x "ollama" | head -n 1)
         STARTED_BY_SCRIPT=0
-        echo "[*] Ollama est déjà en cours d'exécution (PID: $OLLAMA_PID)."
+        info "Ollama est déjà en cours d'exécution (PID: $OLLAMA_PID)."
         return
     fi
 
-    echo "[+] Lancement d'Ollama en tâche de fond..."
+    step "Lancement d'Ollama en tâche de fond..."
     export OLLAMA_KEEP_ALIVE=-1
     ollama serve > ollama.log 2>&1 &
     OLLAMA_PID=$!
@@ -29,31 +174,30 @@ startOllama()
 
 waitForOllama()
 {
-    echo "[*] Attente du serveur sur $OLLAMA_HOST..."
+    info "Attente du serveur sur $OLLAMA_HOST..."
     until curl -s "$OLLAMA_HOST/api/tags" > /dev/null; do
         sleep 0.5
     done
-    echo "[+] API Ollama opérationnelle."
+    success "API Ollama opérationnelle."
 }
 
-pullModel()
+ensureModel()
 {
-    local model="$1"
+    model="$1"
 
-    echo "[*] Vérification de la présence locale de $model..."
-    if curl -s "$OLLAMA_HOST/api/tags" | grep -q "$model"; then
-        echo "[+] Modèle déjà disponible localement."
+    if ollama show "$model" > /dev/null 2>&1; then
+        info "Modèle déjà installé : $model"
         return
     fi
-    echo "[!] Modèle absent. Téléchargement en cours..."
+    warn "Modèle absent : $model. Téléchargement en cours..."
     ollama pull "$model"
 }
 
 preloadModel()
 {
-    local model="$1" response http_code body
+    model="$1"
 
-    echo "[*] Préchargement de $model en mémoire..."
+    info "Préchargement de $model en mémoire..."
     response=$(curl -s -w "\n%{http_code}" -X POST "$OLLAMA_HOST/api/generate" \
         -H "Content-Type: application/json" \
         -d "{\"model\": \"$model\", \"keep_alive\": -1}")
@@ -62,45 +206,61 @@ preloadModel()
     body=$(echo "$response" | sed '$d')
 
     if [ "$http_code" -ne 200 ]; then
-        echo "[!] ERREUR HTTP $http_code lors du POST /api/generate: $body" >&2
+        error "HTTP $http_code lors du POST /api/generate : $body"
         exit 1
     fi
-    echo "[+] Modèle préchargé (HTTP $http_code)."
+    success "Modèle préchargé."
 }
 
 watchOllama()
 {
     if [ "$STARTED_BY_SCRIPT" -eq 1 ]; then
-        echo "[*] Logs Ollama en direct (Ctrl+C pour quitter)..."
+        info "Logs Ollama en direct (Ctrl+C pour quitter)..."
         tail -f ollama.log &
-        local tail_pid=$!
+        tail_pid=$!
         wait "$OLLAMA_PID"
         kill "$tail_pid" 2>/dev/null
     else
-        echo "[*] Surveillance du processus Ollama actif (Ctrl+C pour quitter)..."
+        info "Surveillance du processus Ollama actif (Ctrl+C pour quitter)..."
         while kill -0 "$OLLAMA_PID" 2>/dev/null; do
             sleep 2
         done
-        echo "[-] Le processus Ollama externe s'est arrêté."
+        warn "Le processus Ollama externe s'est arrêté."
     fi
 }
 
 runBackend()
 {
     set -e
-    source .env
-    trap StopBackend INT TERM
+    loadEnv
+    trap stopBackend INT TERM
 
     startOllama
     waitForOllama
-    pullModel "$HF_MODEL"
-    pullModel "$EMBED_MODEL"
+    ensureModel "$HF_MODEL"
+    ensureModel "$EMBED_MODEL"
     preloadModel "$HF_MODEL"
 
-    echo "[✓] Prêt ! Le backend écoute sur $OLLAMA_HOST avec $HF_MODEL chargé."
+    success "Prêt ! Le backend écoute sur ${BOLD}$OLLAMA_HOST${RESET} avec $HF_MODEL chargé."
     echo "------------------------------------------------------------------"
 
     watchOllama
+}
+
+pullModels()
+{
+    set -e
+    loadEnv
+    startOllama
+    waitForOllama
+
+    step "Mise à jour de $HF_MODEL..."
+    ollama pull "$HF_MODEL"
+    step "Mise à jour de $EMBED_MODEL..."
+    ollama pull "$EMBED_MODEL"
+
+    [ "$STARTED_BY_SCRIPT" -eq 1 ] && kill "$OLLAMA_PID" 2>/dev/null
+    success "Modèles à jour."
 }
 
 # ── Frontend ─────────────────────────────────────────────────
@@ -108,69 +268,52 @@ runBackend()
 runFrontend()
 {
     set -e
-
+    requireVenv
     export PYTHONPATH="$PWD:$PWD/src"
-    .venv/bin/gradio src/webapp/app.py --demo-name frontend
+    "$VENV/bin/gradio" src/webapp/app.py --demo-name frontend
 }
 
 runCli()
 {
     set -e
-
+    requireVenv
     export PYTHONPATH="$PWD:$PWD/src"
-    .venv/bin/python src/main.py
-}
-
-# ── Setup ─────────────────────────────────────────────────
-
-setupProject()
-{
-    set -e
-
-    echo "[+] Creating virtual environment..."
-    python3 -m venv .venv
-
-    echo "[+] Installing dependencies..."
-    .venv/bin/python -m pip install --upgrade pip
-    .venv/bin/pip install -r requirements.txt
-
-    if [ ! -f .env ]; then
-        echo "[+] Creating .env from .env.exemple..."
-        cp .env.exemple .env
-    else
-        echo "[*] .env already exists."
-    fi
-
-    echo
-    echo "[✓] Setup complete."
-    echo
-    echo "Next steps (two terminals):"
-    echo "  ./scripts/A1Libi_dev -back"
-    echo "  ./scripts/A1Libi_dev -front   (or -cli)"
+    "$VENV/bin/python" src/main.py
 }
 
 # ── Main ─────────────────────────────────────────────────
 
 usage()
 {
-    echo "Usage: $0 <option>"
+    echo "${BOLD}Usage:${RESET} $0 <option>"
     echo
-    echo "  -setup   create .venv, install deps, create .env"
-    echo "  -back    start Ollama + pull/preload models (blocking)"
-    echo "  -front   start the Gradio web app (hot reload)"
-    echo "  -cli     start the CLI"
+    echo "  ${BOLD}Installation${RESET}"
+    echo "  ${CYAN}-setup${RESET}       crée .venv, installe les dépendances, crée .env"
+    echo "  ${CYAN}-update${RESET}      git pull + met à jour les dépendances + vérifie .env"
+    echo "  ${CYAN}-reinstall${RESET}   supprime .venv et réinstalle tout"
+    echo
+    echo "  ${BOLD}Lancement${RESET}"
+    echo "  ${CYAN}-back${RESET}        lance Ollama, télécharge les modèles s'ils manquent (bloquant)"
+    echo "  ${CYAN}-front${RESET}       lance l'app web Gradio (rechargement auto)"
+    echo "  ${CYAN}-cli${RESET}         lance la CLI"
+    echo
+    echo "  ${BOLD}Modèles${RESET}"
+    echo "  ${CYAN}-pull${RESET}        force la mise à jour des modèles"
 }
 
 main()
 {
     case "$1" in
-        -setup) setupProject ;;
-        -back)  runBackend ;;
-        -front) runFrontend ;;
-        -cli)   runCli ;;
-        *)      usage; exit 1 ;;
+        -setup)     setupProject ;;
+        -update)    updateProject ;;
+        -reinstall) reinstallProject ;;
+        -back)      runBackend ;;
+        -front)     runFrontend ;;
+        -cli)       runCli ;;
+        -pull)      pullModels ;;
+        "")         usage; exit 1 ;;
+        *)          error "Option inconnue : $1"; echo; usage; exit 1 ;;
     esac
 }
-
 
 main "$@"

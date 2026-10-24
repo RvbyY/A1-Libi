@@ -8,8 +8,10 @@ from typing import Literal, Optional, Union
 
 from src.galerelm.models.message import Message, MessageList, ToolCalls
 from src.galerelm.models.options import Options
+from src.galerelm.models.prompt import Prompt
 from src.galerelm.models.tools import ToolsList
 from src.galerelm.models.response import ChatResponse
+from src.galerelm.ollama import OllamaError
 from src.rapideAPI.client import RapideAPI
 
 logger = logging.getLogger("galerelm.models.chat")
@@ -32,7 +34,7 @@ class Chat:
         messages: MessageList = None,
         tools: ToolsList = None,
         options: Options = None,
-        system_prompt: str = None,
+        system_prompt: Union[str, Prompt] = None,
         think: Union[bool, Think] = None,
         keep_alive: Union[str, int] = "2m",
         logprobs: bool = False,
@@ -43,7 +45,12 @@ class Chat:
         self.model = model
         self.api = api
         self.messages = messages if messages is not None else MessageList([])
-        self.tools = tools if tools is not None else ToolsList([])
+        if tools is None:
+            self.tools = ToolsList([])
+        elif hasattr(tools, "to_tools_list") and callable(tools.to_tools_list):
+            self.tools = tools.to_tools_list()
+        else:
+            self.tools = tools
         self.options = options if options is not None else Options()
         self.stream = stream
         self.think = think
@@ -54,7 +61,7 @@ class Chat:
         self.last_response: Optional[ChatResponse] = None
 
         if system_prompt:
-            self._set_system_prompt(system_prompt)
+            self._set_system_prompt(str(system_prompt))
 
     # ── Construction du payload ──────────────────────────────────────
 
@@ -91,14 +98,23 @@ class Chat:
         """
         client = api_client or self.api
         full_response = []
+        accumulated_tool_calls = []
         final_chunk = None
         logger.info(f"[Chat] Démarrage de la génération avec le modèle {self.model}...")
 
         for chunk in client.stream_ndjson("api/chat", json_data=self.format()):
-            token = chunk.get("message", {}).get("content", "")
+            if "error" in chunk:
+                # Ollama peut signaler une erreur au milieu du flux avec un statut HTTP 200
+                raise OllamaError(f"Erreur Ollama pendant la génération : {chunk['error']}")
+            msg_chunk = chunk.get("message", {})
+            token = msg_chunk.get("content", "")
             if token:
                 full_response.append(token)
                 yield token
+
+            chunk_tools = msg_chunk.get("tool_calls")
+            if chunk_tools:
+                accumulated_tool_calls.extend(chunk_tools)
 
             if chunk.get("done", False):
                 final_chunk = chunk
@@ -108,6 +124,8 @@ class Chat:
                 final_chunk["message"] = {}
             final_chunk["message"]["role"] = "assistant"
             final_chunk["message"]["content"] = "".join(full_response)
+            if accumulated_tool_calls:
+                final_chunk["message"]["tool_calls"] = accumulated_tool_calls
             self.last_response = ChatResponse.from_format(final_chunk)
             logger.info(
                 f"[Chat] Génération terminée. "

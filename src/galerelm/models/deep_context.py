@@ -1,146 +1,58 @@
 """
 Module deep_context.py
-Gère la mémoire à long terme (vectorielle) et le processus RAG.
-Pour une documentation détaillée, voir deep_context.md.
+Modèles de données ORM SQLAlchemy pour la mémoire à long terme (DeepContext et LongTermMemory).
+La logique d'appel API d'embedding et de calcul vectoriel est encapsulée dans EmbeddingService et RAGManager (src/galerelm/rag.py).
 """
-import math
 import logging
-from src.config import config
-
-from sqlalchemy import Column, Integer, String, ForeignKey, JSON, Text
+from sqlalchemy import Column, ForeignKey, Integer, JSON, String, Text
 from sqlalchemy.orm import relationship
 
+from src.config import config
 from src.galerelm.models.base import Base
 from src.galerelm.models.message import MessageList
+from src.galerelm.rag import EmbeddingService, RAGManager
 
 logger = logging.getLogger("galerelm.models.deep_context")
 
-# ── Modèle d'embedding par défaut ────────────────────────────────────
-DEFAULT_EMBED_MODEL = config.EMBED_MODEL
-
-
-# ── Calcul de similarité cosinus (pur Python, sans numpy) ────────────
-
-def cosine_similarity(a: list[float], b: list[float]) -> float:
-    """Calcule la similarité cosinus entre deux vecteurs."""
-    if not a or not b or len(a) != len(b):
-        return 0.0
-    dot = sum(x * y for x, y in zip(a, b))
-    norm_a = math.sqrt(sum(x * x for x in a))
-    norm_b = math.sqrt(sum(x * x for x in b))
-    if norm_a == 0 or norm_b == 0:
-        return 0.0
-    return dot / (norm_a * norm_b)
+cosine_similarity = EmbeddingService.cosine_similarity
 
 
 class DeepContext(Base):
+    """
+    Entité ORM représentant le conteneur de mémoire à long terme d'un profil.
+    Délègue la vectorisation et la recherche sémantique à RAGManager.
+    """
     __tablename__ = "deep_contexts"
 
     id: int = Column(Integer, primary_key=True, autoincrement=True)
     profile_id: str = Column(String, ForeignKey("profiles.id"), nullable=False)
-    vector_limit: int = Column(Integer, default=config.DEEP_CONTEXT_LIMIT)
-    embed_model: str = Column(String, default=DEFAULT_EMBED_MODEL)
+    vector_limit: int = Column(Integer, default=lambda: config.DEEP_CONTEXT_LIMIT)
+    embed_model: str = Column(String, default=lambda: config.EMBED_MODEL)
 
     memories = relationship("LongTermMemory", backref="deep_context", cascade="all, delete-orphan")
 
-    def __init__(self, vector_limit: int = 4096, embed_model: str = DEFAULT_EMBED_MODEL):
+    def __init__(self, vector_limit: int = None, embed_model: str = None):
+        # Résolus à l'exécution pour prendre en compte la config YAML / CLI chargée au démarrage
+        vector_limit = vector_limit if vector_limit is not None else config.DEEP_CONTEXT_LIMIT
+        embed_model = embed_model or config.EMBED_MODEL
         self.vector_limit = vector_limit
         self.embed_model = embed_model
         logger.debug(f"Initialized DeepContext (model={embed_model}, limit={vector_limit})")
 
-    # ── Embedding ────────────────────────────────────────────────────
+    def add_memory(self, memory: "LongTermMemory") -> None:
+        """Ajoute une entrée LongTermMemory en respectant la capacité vector_limit."""
+        self.memories.append(memory)
+        if self.vector_limit and len(self.memories) > self.vector_limit:
+            overflow = len(self.memories) - self.vector_limit
+            del self.memories[:overflow]
 
-    def _embed(self, text: str, api_client) -> list[float]:
-        """Génère un vecteur d'embedding via l'API Ollama."""
-        try:
-            response = api_client.post("api/embed", json={
-                "model": self.embed_model,
-                "input": text,
-            })
-            # Ollama renvoie {"embeddings": [[0.1, 0.2, ...]]}
-            embeddings = response.get("embeddings", [])
-            if embeddings and len(embeddings) > 0:
-                logger.debug(f"[DeepContext] Embedding généré ({len(embeddings[0])} dimensions)")
-                return embeddings[0]
-            logger.warning("[DeepContext] Réponse d'embedding vide.")
-            return []
-        except Exception as e:
-            logger.error(f"[DeepContext] Erreur lors de la génération de l'embedding : {e}")
-            return []
-
-    def _embed_batch(self, texts: list[str], api_client) -> list[list[float]]:
-        """Génère des embeddings pour un lot de textes en un seul appel API."""
-        try:
-            response = api_client.post("api/embed", json={
-                "model": self.embed_model,
-                "input": texts,
-            })
-            embeddings = response.get("embeddings", [])
-            logger.debug(f"[DeepContext] Batch de {len(embeddings)} embeddings générés")
-            return embeddings
-        except Exception as e:
-            logger.error(f"[DeepContext] Erreur lors du batch embedding : {e}")
-            return [[] for _ in texts]
-
-    # ── Sauvegarde ───────────────────────────────────────────────────
-
-    def save(self, message_list: MessageList, api_client=None):
-        """
-        Convertit les messages sortants du contexte en mémoires à long terme.
-        Si api_client est fourni, génère de vrais embeddings vectoriels.
-        Sinon, stocke un vecteur vide (mode dégradé).
-        """
-        texts = [msg.content for msg in message_list]
-
-        # Génération des embeddings (en batch si possible)
-        if api_client:
-            embeddings = self._embed_batch(texts, api_client)
-        else:
-            logger.warning("[DeepContext] Pas de client API — stockage sans embeddings (mode dégradé).")
-            embeddings = [[] for _ in texts]
-
-        for msg, embedding in zip(message_list, embeddings):
-            memory = LongTermMemory(
-                role=msg.role,
-                content=msg.content,
-                embedding=embedding,
-            )
-            self.memories.append(memory)
-
-        vectorized = sum(1 for e in embeddings if e)
-        logger.info(f"[DeepContext] {len(message_list)} messages archivés ({vectorized} vectorisés).")
-
-    # ── Recherche par similarité (RAG) ───────────────────────────────
+    def save(self, message_list: MessageList, api_client=None) -> list["LongTermMemory"]:
+        """Archive une liste de messages via RAGManager."""
+        return RAGManager(api_client=api_client).archive(self, message_list, api_client=api_client)
 
     def search(self, query: str, api_client, top_k: int = 3) -> list[tuple[float, "LongTermMemory"]]:
-        """
-        Recherche les mémoires les plus pertinentes par rapport à une requête.
-        Retourne une liste de tuples (score_similarité, mémoire), triée par pertinence décroissante.
-        """
-        if not self.memories:
-            return []
-
-        query_embedding = self._embed(query, api_client)
-        if not query_embedding:
-            logger.warning("[DeepContext] Impossible de vectoriser la requête. Recherche annulée.")
-            return []
-
-        results = []
-        for mem in self.memories:
-            if mem.embedding:
-                score = cosine_similarity(query_embedding, mem.embedding)
-                results.append((score, mem))
-
-        results.sort(key=lambda x: x[0], reverse=True)
-        top_results = results[:top_k]
-
-        if top_results:
-            logger.info(
-                f"[DeepContext] Recherche RAG : {len(top_results)} résultats trouvés "
-                f"(meilleur score: {top_results[0][0]:.4f})"
-            )
-
-        return top_results
+        """Recherche les mémoires les plus pertinentes via RAGManager."""
+        return RAGManager(api_client=api_client).search(self, query, api_client=api_client, top_k=top_k)
 
 
 class LongTermMemory(Base):
@@ -156,3 +68,8 @@ class LongTermMemory(Base):
     role: str = Column(String, nullable=False)
     content: str = Column(Text, nullable=False)
     embedding: list[float] = Column(JSON, nullable=False)
+
+    def __init__(self, role: str, content: str, embedding: list[float] = None):
+        self.role = role
+        self.content = content
+        self.embedding = embedding if embedding is not None else []

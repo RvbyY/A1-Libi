@@ -254,6 +254,143 @@ Le serveur doit donc être configuré sur la machine qui exécute SensAI.
 
 ---
 
+## ⏰ Tasks
+
+Les tools de tâches utilisent le modèle `ScheduledTask`.
+
+Ils reçoivent une fabrique de sessions SQLAlchemy au moment de leur création :
+
+```python
+create_task = CreateTask(sensai.SessionLocal)
+complete_task = CompleteTask(sensai.SessionLocal)
+send_task_file = SendTaskFile(sensai.SessionLocal)
+```
+
+Les trois tools vérifient le propriétaire avec `context.user_id`.
+
+Un utilisateur ne peut donc pas lire ou modifier une tâche appartenant à un
+autre profil.
+
+### Créer une tâche
+
+Fichier :
+[`src/tools/tasks/create_task.py`](../src/tools/tasks/create_task.py)
+
+```json
+{
+  "prompt": "Envoyer le rapport quotidien",
+  "scheduled_at": "2026-10-20T09:00:00",
+  "recurrence": "daily"
+}
+```
+
+`CreateTask` :
+
+1. vérifie que `prompt` est une chaîne non vide ;
+2. parse `scheduled_at` avec le format ISO 8601 ;
+3. crée une `ScheduledTask` pour `context.user_id` ;
+4. initialise le statut à `pending` ;
+5. sauvegarde la tâche en base ;
+6. retourne la tâche sérialisée.
+
+Les récurrences utilisées par le scheduler sont :
+
+- `daily` ;
+- `weekly:<jour>` ;
+- `every:<durée>`, par exemple `every:2h`.
+
+Le résultat contient notamment :
+
+```json
+{
+  "id": "uuid-de-la-tache",
+  "profile_id": "uuid-du-profil",
+  "prompt": "Envoyer le rapport quotidien",
+  "scheduled_at": "2026-10-20T09:00:00",
+  "recurrence": "daily",
+  "status": "pending"
+}
+```
+
+### Compléter une tâche
+
+Fichier :
+[`src/tools/tasks/complete_task.py`](../src/tools/tasks/complete_task.py)
+
+```json
+{
+  "task_id": "uuid-de-la-tache"
+}
+```
+
+`CompleteTask` :
+
+1. vérifie que `task_id` est présent ;
+2. recherche la tâche avec son `id` et le `profile_id` courant ;
+3. refuse une tâche annulée ;
+4. change son statut en `completed` ;
+5. sauvegarde le changement ;
+6. retourne la tâche mise à jour.
+
+Une tâche inexistante ou appartenant à un autre utilisateur produit un
+`ToolResult` en échec.
+
+### Exporter une tâche
+
+Fichier :
+[`src/tools/tasks/send_task_file.py`](../src/tools/tasks/send_task_file.py)
+
+```json
+{
+  "task_id": "uuid-de-la-tache"
+}
+```
+
+`SendTaskFile` ne transmet pas encore le document par email ou par messagerie.
+
+Il retourne un document JSON compatible avec un futur téléchargement ou envoi :
+
+```json
+{
+  "filename": "task-uuid-de-la-tache.json",
+  "task": {
+    "id": "uuid-de-la-tache",
+    "profile_id": "uuid-du-profil",
+    "prompt": "Envoyer le rapport quotidien",
+    "scheduled_at": "2026-10-20T09:00:00",
+    "recurrence": "daily",
+    "status": "pending"
+  }
+}
+```
+
+L'implémentation actuelle prépare les données, mais ne crée pas encore un
+fichier physique sur le disque.
+
+### Enregistrer les tools de tâches
+
+```python
+from src.tools.tasks.complete_task import CompleteTask
+from src.tools.tasks.create_task import CreateTask
+from src.tools.tasks.send_task_file import SendTaskFile
+
+registry = ToolRegistry([
+    CreateTask(sensai.SessionLocal),
+    CompleteTask(sensai.SessionLocal),
+    SendTaskFile(sensai.SessionLocal),
+])
+```
+
+Les trois noms exposés au modèle sont :
+
+| Classe | Nom du tool |
+|---|---|
+| `CreateTask` | `create_task` |
+| `CompleteTask` | `complete_task` |
+| `SendTaskFile` | `send_task_file` |
+
+---
+
 ## ✅ Lire un `ToolResult`
 
 Tous les tools retournent la même structure.
