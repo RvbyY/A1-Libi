@@ -92,7 +92,7 @@ class ChatEngine:
         self._emit("prompt", "active", "Assemblage PromptBuilder")
         built = builder.build()
         self.last_built_prompt = built
-        self._emit("prompt", "success", f"Prompt prêt ({len(built.render_system())} car.)")
+        # self._emit("prompt", "success", f"Prompt prêt ({len(built.render_system())} car.)")
         return built
 
     def _get_tools_list(self) -> ToolsList:
@@ -222,7 +222,7 @@ class ChatEngine:
         session.commit()
 
         if execute_tools:
-            self._execute_tool_calls(session, profile, context, assistant_msg)
+            self._execute_tool_calls(session, profile, context, persisted_msg)
         self._emit("persist", "success", "Réponse sauvegardée en BDD")
         return assistant_msg
 
