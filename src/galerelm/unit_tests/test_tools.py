@@ -1,4 +1,5 @@
 from pathlib import Path
+from types import SimpleNamespace
 from src.galerelm.models import Chat, LongTermMemory, Message, MessageList, ToolCalls, ToolCallsFunction, ToolsList
 from src.main import SensAI
 from src.rapideAPI import RapideAPI
@@ -8,11 +9,12 @@ from src.tools import (
     CompleteTaskTool,
     CreateTaskTool,
     Discord,
+    Telegram,
+    Email,
     NotificationTool,
     SearchMemoryTool,
     SendTaskFileTool,
     SummarizeSessionTool,
-    Telegram,
     ToolExecutor,
     ToolRegistry,
     default_tool_registry,
@@ -78,14 +80,19 @@ def test_notification_tool():
 
 def test_discord_and_telegram_tools_with_fake_api():
     class FakeDiscordAPI:
+        def __init__(self):
+           self.sent = []
+
         def post(self, endpoint, json=None, **kwargs):
             if endpoint == "users/@me/channels":
                 return {"id": "chan_999"}
             if endpoint == "channels/chan_999/messages":
+                self.sent.append(json.get("content"))
                 return {"id": "msg_1", "content": json.get("content")}
             return {}
 
-    discord_tool = Discord(token="fake-discord-token", api_client=FakeDiscordAPI())
+    discord_api = FakeDiscordAPI()  
+    discord_tool = Discord(token="fake-discord-token", api_client=discord_api)
     ctx = ToolExecutor(ToolRegistry([discord_tool])).build_tool_context(profile=None)
 
     res = discord_tool.execute(
@@ -93,17 +100,72 @@ def test_discord_and_telegram_tools_with_fake_api():
         {"recipient": "123456789012345678", "content": "Hello Discord"},
     )
     assert res.success is True
+    assert discord_api.sent == ["Hello Discord"]
 
     class FakeTelegramAPI:
+        def __init__(self):
+            self.sent = [] 
+
         def get(self, url, **kwargs):
             return '<html><head><meta property="og:title" content="User"/></head></html>'
 
         def post(self, endpoint, json=None, **kwargs):
+            self.sent.append((json.get("chat_id"), json.get("text")))
             return {"ok": True, "result": {"text": json.get("text")}}
 
-    tg_tool = Telegram(token="fake-tg-token", api_client=FakeTelegramAPI())
+    tg_api = FakeTelegramAPI()
+    tg_tool = Telegram(token="fake-tg-token", api_client=tg_api)
     res_tg = tg_tool.execute(ctx, {"recipient": "someuser", "content": "Hello Telegram"})
     assert res_tg.success is True
+    assert tg_api.sent == [("someuser", "Hello Telegram")]
+
+
+def test_discord_rejects_bad_input():
+    ctx = ToolExecutor(ToolRegistry([])).build_tool_context(profile=None)
+    ok_id = "123456789012345678"
+
+    # pas de token
+    assert Discord(token="").execute(ctx, {"recipient": ok_id, "content": "x"}).success is False
+    # ID invalide
+    assert Discord(token="t").execute(ctx, {"recipient": "abc", "content": "x"}).success is False  
+    # message vide
+    assert Discord(token="t").execute(ctx, {"recipient": ok_id, "content": ""}).success is False   
+
+
+def test_email_tool_with_fake_smtp(monkeypatch):
+    sent = []
+
+    class FakeSMTP:
+        def __init__(self, host, port):
+            pass
+
+        def __enter__(self):
+            return self
+
+        def __exit__(self, *args):
+            return False
+
+        def ehlo(self):
+            pass
+
+        def starttls(self):
+            pass
+
+        def sendmail(self, sender, recipients, raw_message):
+            sent.append((sender, recipients))
+
+    monkeypatch.setattr("src.tools.communication.email.smtplib.SMTP", FakeSMTP)
+
+    profile = SimpleNamespace(id=1, email="test@test.com")
+    ctx = ToolExecutor(ToolRegistry([])).build_tool_context(profile=profile)
+    tool = Email(smtp_host="fake", smtp_port=25)
+
+    res = tool.execute(ctx, {"recipient": "res@test.com", "subject": "Salut", "content": "Hello Email"})
+    assert res.success is True
+    assert sent == [("test@test.com", ["res@test.com"])]
+
+    bad = tool.execute(ctx, {"recipient": "not-a-mail", "subject": "x", "content": "x"})
+    assert bad.success is False
 
 
 def test_memory_tools():
@@ -167,11 +229,10 @@ def test_task_tools_and_tool_executor(tmp_path: Path):
     assert create_res.success is True
     task_id = create_res.data["id"]
 
-    export_file = tmp_path / "tasks.json"
-    export_res = SendTaskFileTool().execute(t_ctx, {"file_path": str(export_file)})
+    export_res = SendTaskFileTool().execute(t_ctx, {"task_id": str(task_id)})
     assert export_res.success is True
-    assert export_file.exists()
-    assert export_res.data["count"] == 1
+    assert export_res.data["task"]["prompt"] == "Rappel réunion"
+
 
     complete_res = CompleteTaskTool().execute(t_ctx, {"task_id": task_id, "action": "complete"})
     assert complete_res.success is True
