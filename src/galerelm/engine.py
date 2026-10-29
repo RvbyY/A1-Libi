@@ -222,7 +222,9 @@ class ChatEngine:
         session.commit()
 
         if execute_tools:
-            self._execute_tool_calls(session, profile, context, assistant_msg)
+            # Les ToolCalls sont une relation SQLAlchemy : les passer à persisted_msg les retire
+            # de assistant_msg, c'est donc persisted_msg qui porte les appels à exécuter.
+            self._execute_tool_calls(session, profile, context, persisted_msg)
         self._emit("persist", "success", "Réponse sauvegardée en BDD")
         return assistant_msg
 
