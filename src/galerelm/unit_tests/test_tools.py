@@ -1,4 +1,8 @@
+import json
 from pathlib import Path
+
+import pytest
+
 from src.galerelm.models import Chat, LongTermMemory, Message, MessageList, ToolCalls, ToolCallsFunction, ToolsList
 from src.main import SensAI
 from src.rapideAPI import RapideAPI
@@ -10,6 +14,7 @@ from src.tools import (
     Discord,
     NotificationTool,
     SearchMemoryTool,
+    SelfTestTool,
     SendTaskFileTool,
     SummarizeSessionTool,
     Telegram,
@@ -17,6 +22,7 @@ from src.tools import (
     ToolRegistry,
     default_tool_registry,
 )
+from src.tools.ITools import ToolContext
 
 
 def test_default_tool_registry_and_to_tools_list():
@@ -176,3 +182,99 @@ def test_task_tools_and_tool_executor(tmp_path: Path):
     complete_res = CompleteTaskTool().execute(t_ctx, {"task_id": task_id, "action": "complete"})
     assert complete_res.success is True
     assert complete_res.data["status"] == "completed"
+
+
+# ── tools_selftest ───────────────────────────────────────────────────
+
+def selftest(arguments, user_id="u1"):
+    return SelfTestTool().execute(ToolContext(user_id=user_id), arguments)
+
+
+def test_selftest_is_registered_and_safe():
+    tool = default_tool_registry().get("tools_selftest")
+    assert isinstance(tool, SelfTestTool)
+    assert tool.requires_confirmation is False
+    assert tool.parameters["required"] == ["message"]
+
+
+def test_selftest_echo_nominal():
+    res = selftest({"message": "  ping ", "repeat": 3})
+    assert res.success is True
+    assert res.message == "Selftest OK: ping ping ping"
+    assert res.data["echo"] == "ping ping ping"
+    assert res.data["repeat"] == 3
+    assert res.data["user_id"] == "u1"
+    json.dumps(res.data)  # sérialisable en JSON
+
+
+def test_selftest_defaults_to_single_echo():
+    res = selftest({"message": "ping"})
+    assert res.success is True and res.data["echo"] == "ping"
+
+
+def test_selftest_fail_mode_simulates_an_error():
+    res = selftest({"message": "ping", "mode": "fail"})
+    assert res.success is False
+    assert "Simulated failure" in res.message
+
+
+@pytest.mark.parametrize("arguments, error", [
+    ({}, "message is required"),
+    ({"message": ""}, "message is required"),
+    ({"message": "   "}, "message is required"),
+    ({"message": 42}, "message is required"),
+    ({"message": "x" * 201}, "at most 200"),
+    ({"message": "ping", "mode": "explode"}, "mode must be one of"),
+    ({"message": "ping", "repeat": 0}, "repeat must be"),
+    ({"message": "ping", "repeat": 6}, "repeat must be"),
+    ({"message": "ping", "repeat": "2"}, "repeat must be"),
+    ({"message": "ping", "repeat": True}, "repeat must be"),
+    ("ping", "arguments must be an object"),
+])
+def test_selftest_rejects_invalid_arguments(arguments, error):
+    res = selftest(arguments)
+    assert res.success is False
+    assert error in res.message
+
+
+def test_selftest_only_exposes_the_caller():
+    assert selftest({"message": "a"}, user_id="alice").data["user_id"] == "alice"
+    assert selftest({"message": "b"}, user_id="bob").data["user_id"] == "bob"
+
+
+class SelfTestOllama:
+    """Faux Ollama : demande un appel à tools_selftest (aucun appel réseau)."""
+    base_url = "http://fake-ollama"
+
+    def stream_ndjson(self, endpoint, data=None, json_data=None, **kwargs):
+        if (json_data or {}).get("messages", [{}])[-1].get("role") == "tool":
+            # Relance après exécution d'outils : le modèle répond en texte
+            yield {"message": {"role": "assistant", "content": "C'est fait."}, "done": True, "model": "llama3.2"}
+            return
+        yield {
+            "message": {
+                "role": "assistant",
+                "content": "Je teste les outils.",
+                "tool_calls": [{"function": {"name": "tools_selftest", "arguments": {"message": "ping"}}}],
+            },
+            "done": True,
+            "model": "llama3.2",
+        }
+
+    def post(self, endpoint, data=None, json=None, **kwargs):
+        return {"embeddings": [[0.1, 0.2, 0.3]]}
+
+
+@pytest.mark.parametrize("anti_hallucination", [False, True])
+def test_selftest_through_full_pipeline(anti_hallucination):
+    app = SensAI(
+        db_url="sqlite:///:memory:",
+        use_anti_hallucination=anti_hallucination,
+        max_hallucination_retries=0,
+    )
+    app.api = app.chat_engine.api = SelfTestOllama()
+    app.load_or_create_profile(email="selftest@test.com", name="SelfTestUser")
+
+    app.chat("Teste les outils avec ping")
+    tool_messages = [m.content for m in app.context.messages if m.role == "tool"]
+    assert tool_messages == ["[tools_selftest] Selftest OK: ping"]

@@ -46,6 +46,47 @@ class TerminalREPL:
     def __init__(self, app: "SensAI", console: Optional[Console] = None):
         self.app = app
         self.console = console or Console(theme=THEME)
+        self.app.chat_engine.confirm_tool = self.confirm_tool
+        self.app.chat_engine.on_tool_call = self.log_tool_call
+
+    @staticmethod
+    def format_tool_call(name: str, arguments: dict, max_value_len: int = 40) -> str:
+        """Résume un appel d'outil sur une ligne : nom(arg='valeur', ...), valeurs longues tronquées."""
+        parts = []
+        for key, value in arguments.items():
+            shown = repr(value)
+            if len(shown) > max_value_len:
+                shown = shown[: max_value_len - 1] + "…"
+            parts.append(f"{key}={shown}")
+        return f"{name}({', '.join(parts)})"
+
+    def log_tool_call(self, name: str, arguments: dict, result, duration_ms: float) -> None:
+        """Affiche dans le terminal chaque outil appelé par l'assistant, son statut et sa durée."""
+        status = "[hack.bright]✓[/]" if result.success else "[hack.error]✗[/]"
+        # Une ligne par appel, même si le message du tool contient des retours à la ligne
+        message = " ".join(str(result.message).split())
+        if len(message) > 100:
+            message = message[:99] + "…"
+        self.console.print(
+            f"\n[hack.dim]⚙ tool[/] [hack]{escape(self.format_tool_call(name, arguments))}[/] "
+            f"{status} [hack.dim]{escape(message)} ({duration_ms:.0f} ms)[/]"
+        )
+
+    def confirm_tool(self, name: str, arguments: dict) -> bool:
+        """Demande à l'utilisateur d'autoriser un outil sensible avant son exécution (défaut : non)."""
+        details = "\n".join(f"  {key} = {value!r}" for key, value in arguments.items()) or "  (aucun argument)"
+        self.console.print(
+            f"\n[hack.error]\\[?] L'assistant veut exécuter l'outil « {escape(name)} » :[/]\n"
+            f"[hack]{escape(details)}[/]"
+        )
+        try:
+            answer = self.console.input("[hack.bright]Autoriser ? [o/N] [/]").strip().lower()
+        except (EOFError, KeyboardInterrupt):
+            answer = ""
+        approved = answer in ("o", "oui", "y", "yes")
+        if not approved:
+            self.console.print("[hack.dim]> action annulée.[/]")
+        return approved
 
     def print_welcome(self) -> None:
         """Affiche la bannière d'accueil dans le terminal."""

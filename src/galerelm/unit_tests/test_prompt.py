@@ -72,7 +72,7 @@ def test_prompt_builder_with_profile_memories_and_tools():
 
     assert "Tu es SensAI, assistant personnel." in prompt.system_content
     assert "Vérifie toujours l'agenda." in prompt.system_content
-    assert "- calendar:" in prompt.system_content
+    assert "- calendar(action*: add|list|cancel" in prompt.system_content
     assert "- [user] J'habite à Lyon" in prompt.system_content
     assert prompt.memories_injected == 2
     assert prompt.tools_injected == 1
@@ -103,3 +103,54 @@ def test_chat_accepts_prompt_object():
     payload = chat.format()
     assert payload["messages"][0]["role"] == "system"
     assert "Souvenir 1" in payload["messages"][0]["content"]
+
+
+WEATHER_TOOL = {
+    "type": "function",
+    "function": {
+        "name": "weather",
+        "description": "Get the weather forecast.",
+        "parameters": {
+            "type": "object",
+            "properties": {
+                "city": {"type": "string", "description": "City name."},
+                "unit": {"type": "string", "enum": ["celsius", "fahrenheit"]},
+                "days": {"type": "integer"},
+            },
+            "required": ["city"],
+        },
+    },
+}
+
+
+def test_with_tools_lists_signature_with_required_enum_and_types():
+    prompt = PromptBuilder().with_tools([WEATHER_TOOL]).build()
+    assert "- weather(city*, unit: celsius|fahrenheit, days: integer) — Get the weather forecast." in prompt.system_content
+    assert prompt.tools_injected == 1
+
+
+def test_with_tools_handles_unwrapped_definitions_and_missing_fields():
+    prompt = PromptBuilder().with_tools([
+        {"name": "ping"},
+        {"name": "clear", "description": "Clear context.", "parameters": {"type": "object", "properties": {}}},
+        {"description": "pas de nom : ignoré"},
+    ]).build()
+    assert "- ping()\n" in prompt.system_content
+    assert "- clear() — Clear context." in prompt.system_content
+    assert "ignoré" not in prompt.system_content
+    assert prompt.tools_injected == 2
+
+
+def test_with_tools_adds_usage_rules_from_registry():
+    prompt = PromptBuilder().with_tools(ToolRegistry([Calendar()])).build()
+    assert "Utilisation des outils :" in prompt.system_content
+    assert "tool_calls" in prompt.system_content
+    assert "* sont obligatoires" in prompt.system_content
+
+
+def test_no_tools_block_without_tools():
+    for tools in (None, ToolRegistry(), []):
+        prompt = PromptBuilder().with_tools(tools).build()
+        assert "Outils disponibles" not in prompt.system_content
+        assert "Utilisation des outils" not in prompt.system_content
+        assert prompt.tools_injected == 0

@@ -19,7 +19,8 @@ class WebAppController:
     Contrôleur orienté objet pour l'application Web Gradio + Visualiseur Temps Réel.
     """
 
-    def __init__(self, db_url: str = "sqlite:///galerelm.db"):
+    def __init__(self, db_url: str = None):
+        # None : utilise config.DB_URL (.env, config.yaml), comme la CLI
         self.api = SensAIWrapper(db_url=db_url)
         self.visualizer = PipelineVisualizer()
         self.api.engine.on_event = self.visualizer.mark

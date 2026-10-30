@@ -99,6 +99,19 @@ Requête :
 {user_input}
 """.strip()
 
+MEMORIES_HEADER = (
+    "Souvenirs de tes conversations précédentes avec l'utilisateur. "
+    "Ce sont des faits que l'utilisateur t'a déjà dits : utilise-les pour répondre "
+    "à toute question sur lui ou sur ce qu'il t'a confié, au lieu de dire que tu ne sais pas :"
+)
+
+TOOLS_USAGE_RULES = [
+    "Appelle un outil uniquement si la demande nécessite une action ou une information que tu n'as pas.",
+    "Appelle-le via le mécanisme d'appel de fonctions (tool_calls) ; n'écris jamais l'appel dans ta réponse texte.",
+    "Les paramètres marqués * sont obligatoires : s'il en manque un, demande-le à l'utilisateur au lieu de l'inventer.",
+    "N'invente jamais le résultat d'un outil : base ta réponse uniquement sur ce qu'il renvoie.",
+]
+
 HALLUCINATION_GRADER_TEMPLATE = """
 Tu es un vérificateur factuel strict (Anti-Hallucination Grader).
 
@@ -379,12 +392,33 @@ class PromptBuilder:
 
         for tool_def in definitions:
             func = tool_def.get("function", tool_def) if isinstance(tool_def, dict) else {}
-            name = func.get("name")
-            desc = func.get("description", "")
-            if name:
-                self._tool_lines.append(f"- {name}: {desc}")
+            if func.get("name"):
+                self._tool_lines.append(self._format_tool_line(func))
 
         return self
+
+    @staticmethod
+    def _format_tool_line(func: dict) -> str:
+        """
+        Résume un outil en une ligne compacte de type signature, ex :
+        - calendar(action*: add|list|cancel, title, attendees: array) — Create calendar events.
+        Le type 'string' est implicite pour économiser des tokens ; * marque les paramètres obligatoires.
+        """
+        schema = func.get("parameters") or {}
+        required = set(schema.get("required") or [])
+        params: list[str] = []
+        for param, spec in (schema.get("properties") or {}).items():
+            label = f"{param}*" if param in required else param
+            spec = spec if isinstance(spec, dict) else {}
+            if spec.get("enum"):
+                label += ": " + "|".join(str(v) for v in spec["enum"])
+            elif spec.get("type") and spec["type"] != "string":
+                label += f": {spec['type']}"
+            params.append(label)
+
+        line = f"- {func['name']}({', '.join(params)})"
+        description = (func.get("description") or "").strip()
+        return f"{line} — {description}" if description else line
 
     def _render_base_instructions(self) -> str:
         """Rend le bloc d'instructions principal (template ou instructions profil)."""
@@ -420,6 +454,15 @@ class PromptBuilder:
         if base:
             sections.append(base)
 
+        # Les souvenirs passent juste après les instructions, avec une consigne explicite :
+        # placés en fin de prompt sans consigne, les petits modèles les ignoraient.
+        if self._memory_lines:
+            memories_block = (
+                MEMORIES_HEADER + "\n"
+                + "\n".join(self._memory_lines)
+            )
+            sections.append(memories_block)
+
         if self._extra_rules:
             rules_block = "Règles complémentaires :\n" + "\n".join(f"- {r}" for r in self._extra_rules)
             sections.append(rules_block)
@@ -428,15 +471,11 @@ class PromptBuilder:
             tools_block = (
                 "Outils disponibles :\n"
                 + "\n".join(self._tool_lines)
+                + "\n\nUtilisation des outils :\n"
+                + "\n".join(f"- {r}" for r in TOOLS_USAGE_RULES)
             )
             sections.append(tools_block)
 
-        if self._memory_lines:
-            memories_block = (
-                "Voici des informations pertinentes issues de conversations précédentes :\n"
-                + "\n".join(self._memory_lines)
-            )
-            sections.append(memories_block)
 
         system_content = "\n\n".join(sections)
         return Prompt(
