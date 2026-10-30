@@ -146,3 +146,18 @@ def test_chat_engine_guardrail_blocking():
     assert app.context.messages[1].content == "Requête ambiguë."
     assert app.chat_engine.last_response.done_reason == "guardrail"
 
+
+
+def test_prompt_event_reports_real_prompt_size():
+    events = []
+    app = SensAI(db_url="sqlite:///:memory:")
+    fake_api = FakeRapideAPI()
+    app.api = fake_api
+    app.chat_engine.api = fake_api
+    app.chat_engine.on_event = lambda node, state, detail: events.append((node, state, detail))
+    app.load_or_create_profile(email="event@test.com", name="EventUser")
+
+    app.chat("Salut !")
+    size = len(app.chat_engine.last_built_prompt.system_content)
+    assert size > 0
+    assert ("prompt", "success", f"Prompt prêt ({size} car.)") in events

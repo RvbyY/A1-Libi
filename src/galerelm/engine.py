@@ -116,7 +116,7 @@ class ChatEngine:
         self._emit("prompt", "active", "Assemblage PromptBuilder")
         built = builder.build()
         self.last_built_prompt = built
-        self._emit("prompt", "success", f"Prompt prêt ({len(built.render_system())} car.)")
+        self._emit("prompt", "success", f"Prompt prêt ({len(built.system_content)} car.)")
         return built
 
     def _get_tools_list(self) -> ToolsList:
