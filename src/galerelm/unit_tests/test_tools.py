@@ -247,6 +247,10 @@ class SelfTestOllama:
     base_url = "http://fake-ollama"
 
     def stream_ndjson(self, endpoint, data=None, json_data=None, **kwargs):
+        if (json_data or {}).get("messages", [{}])[-1].get("role") == "tool":
+            # Relance après exécution d'outils : le modèle répond en texte
+            yield {"message": {"role": "assistant", "content": "C'est fait."}, "done": True, "model": "llama3.2"}
+            return
         yield {
             "message": {
                 "role": "assistant",

@@ -45,8 +45,12 @@ class ChatEngine:
         on_event: Optional[Callable[[str, str, str], None]] = None,
         confirm_tool: Optional[Callable[[str, dict], bool]] = None,
         on_tool_call: Optional[Callable[[str, dict, Any, float], None]] = None,
+        max_tool_rounds: int = 3,
     ):
         self.api = api
+        # Nombre max de relances du modèle après exécution d'outils (évite les boucles d'appels infinies)
+        self.max_tool_rounds = max_tool_rounds
+        self.last_tool_outputs: list[str] = []
         # Demande à l'utilisateur d'autoriser un outil sensible (email, discord...) ; None = toujours refuser
         self.confirm_tool = confirm_tool
         # Reçoit (nom, arguments, ToolResult, durée ms) après chaque appel d'outil (logs CLI)
@@ -227,6 +231,7 @@ class ChatEngine:
         Enregistre la réponse de l'assistant dans le contexte et exécute les éventuels outils.
         """
         self.last_response = llm.last_response
+        self.last_tool_outputs = []
         if not llm.last_response or not llm.last_response.message:
             logger.error("[ChatEngine] Aucune réponse retournée par le modèle.")
             return None
@@ -244,7 +249,7 @@ class ChatEngine:
         if execute_tools:
             # Les ToolCalls sont une relation SQLAlchemy : les passer à persisted_msg les retire
             # de assistant_msg, c'est donc persisted_msg qui porte les appels à exécuter.
-            self._execute_tool_calls(session, profile, context, persisted_msg)
+            self.last_tool_outputs = self._execute_tool_calls(session, profile, context, persisted_msg)
         self._emit("persist", "success", "Réponse sauvegardée en BDD")
         return assistant_msg
 
@@ -274,6 +279,7 @@ class ChatEngine:
             on_event=self.on_event,
             confirm_tool=self._confirm_tool,
             on_tool_call=self._notify_tool_call,
+            max_tool_rounds=self.max_tool_rounds,
         )
         final_state = workflow.run(session, profile, context, user_prompt)
         self.last_graph_state = final_state
@@ -334,14 +340,37 @@ class ChatEngine:
             return self.last_response
 
         llm = self.prepare_chat(session, profile, context, user_prompt)
-        self._emit("generate", "active", f"Streaming depuis {self.model}...")
+        streamed_text = False
+        for tool_round in range(self.max_tool_rounds + 1):
+            self._emit("generate", "active", f"Streaming depuis {self.model}...")
+            separator = "\n\n" if streamed_text else ""
+            for token in llm.execute_stream():
+                if separator:
+                    yield separator
+                    separator = ""
+                streamed_text = True
+                yield token
+            self._emit("generate", "success", "Génération terminée")
 
-        for token in llm.execute_stream():
-            yield token
-
-        self._emit("generate", "success", "Génération terminée")
-        self.persist_response(session, profile, context, llm)
+            self.persist_response(session, profile, context, llm)
+            if not self.last_tool_outputs:
+                break
+            if tool_round == self.max_tool_rounds:
+                logger.warning("[ChatEngine] Limite de relances après outils atteinte.")
+                break
+            # Relance : le modèle lit les résultats des outils (messages 'tool') et formule sa réponse
+            llm = self.follow_up_chat(context)
         return self.last_response
+
+    def follow_up_chat(self, context: Context) -> Chat:
+        """Prépare la génération qui suit l'exécution d'outils, avec le même prompt système."""
+        return Chat(
+            model=self.model,
+            api=self.api,
+            messages=context.get_messages_copy(),
+            tools=self._get_tools_list(),
+            system_prompt=self.last_built_prompt,
+        )
 
     def execute_turn(
         self,

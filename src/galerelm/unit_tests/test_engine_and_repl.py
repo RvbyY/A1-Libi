@@ -31,6 +31,10 @@ class FakeRapideAPI:
         ]
 
     def stream_ndjson(self, endpoint: str, data=None, json_data=None, **kwargs):
+        if (json_data or {}).get("messages", [{}])[-1].get("role") == "tool":
+            # Relance après exécution d'outils : le modèle répond en texte
+            yield {"message": {"role": "assistant", "content": "C'est fait."}, "done": True, "model": "llama3.2"}
+            return
         for chunk in self.chunks:
             yield chunk
 
@@ -97,7 +101,8 @@ def test_chat_engine_executes_tool_calls():
     app.chat("Planifie une réunion demain de 10h à 11h")
     assert len(calendar_tool.calendar) == 1
     roles = [m.role for m in app.context.messages]
-    assert roles == ["user", "assistant", "tool"]
+    assert roles == ["user", "assistant", "tool", "assistant"]
+    assert app.context.messages[-1].content == "C'est fait."
 
 
 def test_terminal_repl_command_dispatch():

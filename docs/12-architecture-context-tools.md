@@ -177,6 +177,13 @@ En pratique :
 4. Le tool vérifie l'utilisateur quand c'est nécessaire.
 5. Le tool réalise l'action.
 6. Le tool transforme la réponse en `ToolResult`.
+7. Le résultat est ajouté à l'historique (message de rôle `tool`) et affiché dans la CLI.
+8. Le modèle est relancé avec ce résultat pour formuler sa réponse finale.
+   Il peut rappeler un outil, dans la limite de `max_tool_rounds` relances (3 par défaut).
+
+En mode `--anti-hallucination`, le graphe suit le même chemin
+(`generate → tools → generate → grade`). Une régénération demandée par le vérificateur
+ne relance jamais les outils, pour ne pas répéter une action (un email envoyé deux fois, par exemple).
 
 ---
 

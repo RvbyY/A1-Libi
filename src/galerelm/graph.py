@@ -235,9 +235,11 @@ class AntiHallucinationWorkflow:
         on_event: Optional[Callable[[str, str, str], None]] = None,
         confirm_tool: Optional[Callable[[str, dict], bool]] = None,
         on_tool_call: Optional[Callable[[str, dict, Any, float], None]] = None,
+        max_tool_rounds: int = 3,
     ):
         self.api = api
         self.model = model
+        self.max_tool_rounds = max_tool_rounds
         self.grader = grader or HallucinationGrader(api=api, model=model)
         self.tool_registry = tool_registry
         self.tool_executor = (
@@ -270,7 +272,8 @@ class AntiHallucinationWorkflow:
                 "grade": "grade",
             },
         )
-        builder.add_edge("tools", "grade")
+        # Après les outils, le modèle est relancé pour formuler sa réponse à partir de leurs résultats
+        builder.add_edge("tools", "generate")
 
         builder.add_conditional_edges(
             "grade",
@@ -306,6 +309,9 @@ class AntiHallucinationWorkflow:
             "critique": "",
             "grounded": True,
             "retries": 0,
+            "tool_rounds": 0,
+            "after_tools": False,
+            "graded": False,
         }
 
     def node_generate(self, state: dict[str, Any]) -> dict[str, Any]:
@@ -363,7 +369,9 @@ class AntiHallucinationWorkflow:
             "candidate_answer": candidate,
             "last_llm": llm,
             "last_response": llm.last_response,
-            "retries": retries + 1,
+            # Une relance après outils n'est pas une régénération anti-hallucination
+            "retries": retries if state.get("after_tools") else retries + 1,
+            "after_tools": False,
         }
 
     def node_tools(self, state: dict[str, Any]) -> dict[str, Any]:
@@ -375,7 +383,10 @@ class AntiHallucinationWorkflow:
         session = state.get("session")
 
         if not self.tool_executor or not last_response or not last_response.message:
-            return {"tool_outputs": []}
+            return {"tool_outputs": list(state.get("tool_outputs", []))}
+
+        # Garde l'ordre user -> assistant -> tool dans l'historique avant la relance du modèle
+        context.add(Message(role="assistant", content=last_response.message.content), api_client=self.api)
 
         tool_ctx = self.tool_executor.build_tool_context(
             profile=profile,
@@ -386,7 +397,11 @@ class AntiHallucinationWorkflow:
         results = self.tool_executor.execute_calls(last_response.message, tool_ctx)
         outputs = [f"[{name}] {res.message}" for name, res in results]
         self._emit("tools", "success", f"{len(outputs)} outil(s) exécuté(s)")
-        return {"tool_outputs": outputs}
+        return {
+            "tool_outputs": list(state.get("tool_outputs", [])) + outputs,
+            "tool_rounds": state.get("tool_rounds", 0) + 1,
+            "after_tools": True,
+        }
 
     def node_grade(self, state: dict[str, Any]) -> dict[str, Any]:
         """Nœud 4 : Vérifie l'absence d'hallucination dans la réponse candidate."""
@@ -411,6 +426,7 @@ class AntiHallucinationWorkflow:
         return {
             "grounded": grade_result.grounded,
             "critique": grade_result.critique,
+            "graded": True,
         }
 
     # ── Routeurs conditionnels ───────────────────────────────────────
@@ -422,7 +438,9 @@ class AntiHallucinationWorkflow:
             and last_response is not None
             and last_response.message is not None
             and bool(last_response.message.tool_calls)
-            and not state.get("tool_outputs")
+            # Pas de nouvel appel après une régénération (évite de renvoyer un email deux fois)
+            and not state.get("graded")
+            and state.get("tool_rounds", 0) < self.max_tool_rounds
         ):
             return "run_tools"
         return "grade"
