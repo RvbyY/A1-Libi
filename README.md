@@ -68,3 +68,8 @@ Before opening the chat, SensAI checks that Ollama answers and that the model is
 | Embedding model missing | Warning only: long-term memory (RAG) is disabled | — |
 
 The same messages are shown if Ollama stops or times out during a conversation; the session keeps running.
+
+## User stories
+
+The user stories required by the project (at least two per implemented feature) are listed in
+[USER_STORIES.md](USER_STORIES.md), with one detailed page per feature in [docs/user_stories](docs/user_stories/README.md).
