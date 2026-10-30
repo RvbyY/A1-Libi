@@ -21,6 +21,9 @@ load_dotenv()
 # Fichier chargé automatiquement s'il est présent dans le répertoire courant
 DEFAULT_CONFIG_FILE = "config.yaml"
 
+# Racine du dépôt : les chemins SQLite relatifs y sont résolus, quel que soit le dossier de lancement
+PROJECT_ROOT = Path(__file__).resolve().parent.parent
+
 # Correspondance (section, clé) du YAML -> attribut de Config
 YAML_KEYS: dict[tuple[str, str], str] = {
     ("ollama", "host"): "OLLAMA_HOST",
@@ -35,6 +38,21 @@ YAML_KEYS: dict[tuple[str, str], str] = {
 
 class ConfigError(ValueError):
     """Fichier de configuration introuvable ou invalide."""
+
+
+def resolve_db_url(url: str) -> str:
+    """
+    Rend absolu le chemin d'une URL SQLite relative (sqlite:///galerelm.db) par rapport à PROJECT_ROOT.
+    Sans cela, lancer l'outil depuis src/ ou depuis la racine ouvrait deux bases différentes.
+    Les autres URLs (absolues, :memory:, PostgreSQL...) sont renvoyées telles quelles.
+    """
+    prefix = "sqlite:///"
+    if not url.startswith(prefix):
+        return url
+    path = url[len(prefix):]
+    if not path or path.startswith(":memory:") or path.startswith("file:") or Path(path).is_absolute():
+        return url
+    return prefix + str(PROJECT_ROOT / path)
 
 
 class Config:

@@ -79,7 +79,7 @@ Fichiers concernés :
 |---------|----------|----------|
 | `constants.py` | Plus importé nulle part | Le supprimer |
 | `normalize_docs.py` | Script de test oublié à la racine | Le supprimer |
-| `src/galerelm.db` | Seconde base créée par erreur | La supprimer, l'ajouter au `.gitignore` |
+| `src/galerelm.db` | Seconde base créée en lançant l'outil depuis `src/` | Corrigé : retirée de git, et les chemins SQLite relatifs sont résolus depuis la racine. Le fichier local peut être supprimé |
 | `galerelm.db`, `.coverage`, `ollama.log` | Fichiers générés | Les ajouter au `.gitignore` |
 | `src/webapp/init_app.py` | Utilise l'ancien prototype `src/model/` | Le rebrancher sur `SensAIWrapper` |
 | `src/model/` | Ancien prototype, non relié au framework | L'archiver ou le supprimer |
