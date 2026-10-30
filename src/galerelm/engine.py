@@ -44,13 +44,16 @@ class ChatEngine:
         rag_top_k: int = 3,
         on_event: Optional[Callable[[str, str, str], None]] = None,
         confirm_tool: Optional[Callable[[str, dict], bool]] = None,
+        on_tool_call: Optional[Callable[[str, dict, Any, float], None]] = None,
     ):
         self.api = api
         # Demande à l'utilisateur d'autoriser un outil sensible (email, discord...) ; None = toujours refuser
         self.confirm_tool = confirm_tool
+        # Reçoit (nom, arguments, ToolResult, durée ms) après chaque appel d'outil (logs CLI)
+        self.on_tool_call = on_tool_call
         self.model = model or config.DEFAULT_MODEL
         self.tool_registry = tool_registry
-        self.tool_executor = ToolExecutor(tool_registry, confirm=self._confirm_tool) if tool_registry else None
+        self.tool_executor = self._new_executor(tool_registry)
         self.guardrail = guardrail
         self.hallucination_grader = hallucination_grader
         self.max_hallucination_retries = max_hallucination_retries
@@ -69,9 +72,19 @@ class ChatEngine:
         """Relaie la demande de confirmation au callback courant (il peut être défini après la création)."""
         return self.confirm_tool is not None and self.confirm_tool(name, arguments)
 
+    def _notify_tool_call(self, name: str, arguments: dict, result: Any, duration_ms: float) -> None:
+        """Relaie chaque appel d'outil à l'observateur courant (il peut être défini après la création)."""
+        if self.on_tool_call is not None:
+            self.on_tool_call(name, arguments, result, duration_ms)
+
+    def _new_executor(self, registry: Optional[ToolRegistry]) -> Optional[ToolExecutor]:
+        if not registry:
+            return None
+        return ToolExecutor(registry, confirm=self._confirm_tool, on_call=self._notify_tool_call)
+
     def set_tool_registry(self, registry: Optional[ToolRegistry]) -> None:
         self.tool_registry = registry
-        self.tool_executor = ToolExecutor(registry, confirm=self._confirm_tool) if registry else None
+        self.tool_executor = self._new_executor(registry)
 
     def enable_anti_hallucination(self, max_retries: int = 2) -> "ChatEngine":
         """Active le graphe par nœuds AntiHallucinationWorkflow sur ce moteur."""
@@ -199,7 +212,7 @@ class ChatEngine:
 
     def tool_regex_ready(self) -> bool:
         if self.tool_registry and self.tool_executor is None:
-            self.tool_executor = ToolExecutor(self.tool_registry, confirm=self._confirm_tool)
+            self.tool_executor = self._new_executor(self.tool_registry)
         return self.tool_executor is not None
 
     def persist_response(
@@ -260,6 +273,7 @@ class ChatEngine:
             max_retries=self.max_hallucination_retries,
             on_event=self.on_event,
             confirm_tool=self._confirm_tool,
+            on_tool_call=self._notify_tool_call,
         )
         final_state = workflow.run(session, profile, context, user_prompt)
         self.last_graph_state = final_state

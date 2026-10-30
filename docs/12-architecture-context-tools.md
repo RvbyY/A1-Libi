@@ -190,6 +190,8 @@ src/tools/
 ├── registry.py                  → Registre et dispatch
 ├── calendar/
 │   └── calendar_tools.py        → Agenda en mémoire
+├── diagnostic/
+│   └── selftest_tool.py         → Tool de test (echo / échec simulé)
 ├── communication/
 │   ├── email.py                 → Email SMTP
 │   ├── telegram.py              → Telegram Bot API
@@ -278,6 +280,10 @@ d'environnement.
 - Les tools de tâches créent, complètent et exportent les tâches.
 - La création d'une tâche ne valide pas encore la syntaxe de `recurrence` ;
   cette validation est appliquée par le gestionnaire lors de la répétition.
+- `tools_selftest` est exposé au modèle comme les autres tools : sa description lui
+  demande de ne l'utiliser que si l'utilisateur veut tester les outils.
+- Les logs d'appels d'outils sont affichés dans la CLI uniquement ; la webapp ne les
+  affiche pas encore (seul le visualiseur montre l'étape « tools »).
 - L'export de tâche retourne des données JSON compatibles, mais ne crée pas
   encore un fichier physique ni un envoi vers un canal externe.
 

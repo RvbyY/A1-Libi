@@ -10,6 +10,7 @@ from .communication.communication_tools import NotificationTool
 from .communication.discord import Discord
 from .communication.email import Email
 from .communication.telegram import Telegram
+from .diagnostic.selftest_tool import SelfTestTool
 from .memory.memory_tools import ClearSessionTool, SearchMemoryTool, SummarizeSessionTool
 from .tasks.complete_task import CompleteTaskTool
 from .tasks.create_task import CreateTaskTool
@@ -27,6 +28,7 @@ BUILTIN_TOOLS: tuple[type[ToolsInterface], ...] = (
     CreateTaskTool,
     CompleteTaskTool,
     SendTaskFileTool,
+    SelfTestTool,
 )
 
 
@@ -54,4 +56,5 @@ __all__ = [
     "CreateTaskTool",
     "CompleteTaskTool",
     "SendTaskFileTool",
+    "SelfTestTool",
 ]

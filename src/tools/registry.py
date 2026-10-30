@@ -4,6 +4,7 @@ Contient ToolRegistry (registre unifié avec ToolsList) et ToolExecutor
 (exécuteur des appels d'outils demandés par le LLM).
 """
 import logging
+import time
 from typing import Any, Callable, Optional
 
 from src.galerelm.models.message import Message
@@ -14,6 +15,9 @@ logger = logging.getLogger("sensai.tools")
 
 # Callback de confirmation : reçoit (nom de l'outil, arguments) et renvoie True si l'utilisateur accepte.
 ConfirmCallback = Callable[[str, dict], bool]
+
+# Callback d'observation : reçoit (nom de l'outil, arguments, résultat, durée en ms) après chaque appel.
+ToolCallObserver = Callable[[str, dict, "ToolResult", float], None]
 
 
 class ToolRegistry:
@@ -66,9 +70,15 @@ class ToolExecutor:
     et persiste les réponses de rôle 'tool' dans le Context conversationnel.
     """
 
-    def __init__(self, registry: ToolRegistry, confirm: Optional[ConfirmCallback] = None):
+    def __init__(
+        self,
+        registry: ToolRegistry,
+        confirm: Optional[ConfirmCallback] = None,
+        on_call: Optional[ToolCallObserver] = None,
+    ):
         self.registry = registry
         self.confirm = confirm
+        self.on_call = on_call
 
     def refusal_for(self, name: str, arguments: dict) -> Optional[ToolResult]:
         """
@@ -91,6 +101,19 @@ class ToolExecutor:
             return None
         logger.info(f"[ToolExecutor] Outil {name} non confirmé par l'utilisateur : exécution annulée.")
         return ToolResult(False, f"Action '{name}' annulée : l'utilisateur ne l'a pas confirmée.")
+
+    def _report_call(self, name: str, arguments: dict, result: ToolResult, duration_ms: float) -> None:
+        """Journalise l'appel et le transmet à l'observateur (affichage CLI, visualiseur...)."""
+        logger.info(
+            f"[ToolExecutor] {name} args={arguments} success={result.success} "
+            f"durée={duration_ms:.0f}ms message={result.message!r}"
+        )
+        if self.on_call is None:
+            return
+        try:
+            self.on_call(name, arguments, result, duration_ms)
+        except Exception as exc:
+            logger.error(f"[ToolExecutor] Échec de l'observateur d'appels pour {name}: {exc}")
 
     def build_tool_context(
         self,
@@ -128,6 +151,7 @@ class ToolExecutor:
 
         for tc in assistant_msg.tool_calls:
             for func in tc.functions:
+                started = time.perf_counter()
                 res = self.refusal_for(func.name, func.arguments or {})
                 if res is None:
                     try:
@@ -140,6 +164,8 @@ class ToolExecutor:
                         logger.error(f"[ToolExecutor] Échec de l'outil {func.name}: {exc}")
                         res = ToolResult(False, f"Erreur: {exc}")
 
+                duration_ms = (time.perf_counter() - started) * 1000
+                self._report_call(func.name, func.arguments or {}, res, duration_ms)
                 results.append((func.name, res))
                 if chat_context is not None:
                     output_text = f"[{func.name}] {res.message}"
