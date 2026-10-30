@@ -233,12 +233,13 @@ class AntiHallucinationWorkflow:
         rag_top_k: int = 3,
         max_retries: int = 2,
         on_event: Optional[Callable[[str, str, str], None]] = None,
+        confirm_tool: Optional[Callable[[str, dict], bool]] = None,
     ):
         self.api = api
         self.model = model
         self.grader = grader or HallucinationGrader(api=api, model=model)
         self.tool_registry = tool_registry
-        self.tool_executor = ToolExecutor(tool_registry) if tool_registry else None
+        self.tool_executor = ToolExecutor(tool_registry, confirm=confirm_tool) if tool_registry else None
         self.rag_top_k = rag_top_k
         self.max_retries = max_retries
         self.on_event = on_event

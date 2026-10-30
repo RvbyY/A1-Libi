@@ -46,6 +46,23 @@ class TerminalREPL:
     def __init__(self, app: "SensAI", console: Optional[Console] = None):
         self.app = app
         self.console = console or Console(theme=THEME)
+        self.app.chat_engine.confirm_tool = self.confirm_tool
+
+    def confirm_tool(self, name: str, arguments: dict) -> bool:
+        """Demande à l'utilisateur d'autoriser un outil sensible avant son exécution (défaut : non)."""
+        details = "\n".join(f"  {key} = {value!r}" for key, value in arguments.items()) or "  (aucun argument)"
+        self.console.print(
+            f"\n[hack.error]\\[?] L'assistant veut exécuter l'outil « {escape(name)} » :[/]\n"
+            f"[hack]{escape(details)}[/]"
+        )
+        try:
+            answer = self.console.input("[hack.bright]Autoriser ? [o/N] [/]").strip().lower()
+        except (EOFError, KeyboardInterrupt):
+            answer = ""
+        approved = answer in ("o", "oui", "y", "yes")
+        if not approved:
+            self.console.print("[hack.dim]> action annulée.[/]")
+        return approved
 
     def print_welcome(self) -> None:
         """Affiche la bannière d'accueil dans le terminal."""

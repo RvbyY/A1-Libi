@@ -13,6 +13,8 @@ from ..ITools import ToolContext, ToolResult, ToolsInterface
 class NotificationTool(ToolsInterface):
     """Outil multi-canal permettant d'envoyer des notifications (email, sms, slack, push)."""
 
+    requires_confirmation = True
+
     SUPPORTED_CHANNELS = ("email", "sms", "slack", "push")
 
     def __init__(self, email_tool: Optional[Email] = None):

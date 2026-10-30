@@ -4,13 +4,16 @@ Contient ToolRegistry (registre unifié avec ToolsList) et ToolExecutor
 (exécuteur des appels d'outils demandés par le LLM).
 """
 import logging
-from typing import Any, Optional
+from typing import Any, Callable, Optional
 
 from src.galerelm.models.message import Message
 from src.galerelm.models.tools import ToolsList
 from .ITools import ToolContext, ToolResult, ToolsInterface
 
 logger = logging.getLogger("sensai.tools")
+
+# Callback de confirmation : reçoit (nom de l'outil, arguments) et renvoie True si l'utilisateur accepte.
+ConfirmCallback = Callable[[str, dict], bool]
 
 
 class ToolRegistry:
@@ -63,8 +66,31 @@ class ToolExecutor:
     et persiste les réponses de rôle 'tool' dans le Context conversationnel.
     """
 
-    def __init__(self, registry: ToolRegistry):
+    def __init__(self, registry: ToolRegistry, confirm: Optional[ConfirmCallback] = None):
         self.registry = registry
+        self.confirm = confirm
+
+    def refusal_for(self, name: str, arguments: dict) -> Optional[ToolResult]:
+        """
+        Vérifie la confirmation des outils marqués requires_confirmation.
+        Retourne un ToolResult d'échec si l'action est refusée (ou si personne ne peut la confirmer),
+        None si l'exécution peut continuer.
+        """
+        tool = self.registry.get(name)
+        if tool is None or not tool.requires_confirmation:
+            return None
+
+        approved = False
+        if self.confirm is not None:
+            try:
+                approved = bool(self.confirm(name, arguments))
+            except Exception as exc:
+                logger.error(f"[ToolExecutor] Échec de la demande de confirmation pour {name}: {exc}")
+
+        if approved:
+            return None
+        logger.info(f"[ToolExecutor] Outil {name} non confirmé par l'utilisateur : exécution annulée.")
+        return ToolResult(False, f"Action '{name}' annulée : l'utilisateur ne l'a pas confirmée.")
 
     def build_tool_context(
         self,
@@ -102,15 +128,17 @@ class ToolExecutor:
 
         for tc in assistant_msg.tool_calls:
             for func in tc.functions:
-                try:
-                    res = self.registry.execute(
-                        func.name,
-                        tool_context,
-                        func.arguments or {},
-                    )
-                except Exception as exc:
-                    logger.error(f"[ToolExecutor] Échec de l'outil {func.name}: {exc}")
-                    res = ToolResult(False, f"Erreur: {exc}")
+                res = self.refusal_for(func.name, func.arguments or {})
+                if res is None:
+                    try:
+                        res = self.registry.execute(
+                            func.name,
+                            tool_context,
+                            func.arguments or {},
+                        )
+                    except Exception as exc:
+                        logger.error(f"[ToolExecutor] Échec de l'outil {func.name}: {exc}")
+                        res = ToolResult(False, f"Erreur: {exc}")
 
                 results.append((func.name, res))
                 if chat_context is not None:
