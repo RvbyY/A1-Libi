@@ -9,6 +9,7 @@ from typing import Any, Callable, Generator, Optional
 from src.config import config
 from src.galerelm.graph import AntiHallucinationWorkflow, HallucinationGrader
 from src.galerelm.intent_classifier import IntentGuardrail
+from src.galerelm.prompt_simplifier import replace_last_user_message, simplify
 from src.galerelm.models import (
     Chat,
     ChatResponse,
@@ -46,8 +47,12 @@ class ChatEngine:
         confirm_tool: Optional[Callable[[str, dict], bool]] = None,
         on_tool_call: Optional[Callable[[str, dict, Any, float], None]] = None,
         max_tool_rounds: int = 3,
+        simplify_prompt: bool = True,
     ):
         self.api = api
+        # Allège le message (tics, politesse...) avant Guardrail et LLM ; l'historique garde l'original
+        self.simplify_prompt = simplify_prompt
+        self.last_clean_prompt: Optional[str] = None
         # Nombre max de relances du modèle après exécution d'outils (évite les boucles d'appels infinies)
         self.max_tool_rounds = max_tool_rounds
         self.last_tool_outputs: list[str] = []
@@ -119,6 +124,13 @@ class ChatEngine:
         self._emit("prompt", "success", f"Prompt prêt ({len(built.system_content)} car.)")
         return built
 
+    def _llm_messages(self, context: Context):
+        """Copie de l'historique où le dernier message utilisateur est remplacé par sa version simplifiée."""
+        messages = context.get_messages_copy()
+        if self.last_clean_prompt is not None:
+            replace_last_user_message(messages, self.last_clean_prompt)
+        return messages
+
     def _get_tools_list(self) -> ToolsList:
         """Convertit les outils du ToolRegistry en ToolsList via to_tools_list()."""
         if not self.tool_registry:
@@ -180,11 +192,11 @@ class ChatEngine:
         context.add(Message(role="user", content=user_prompt), api_client=self.api)
         session.commit()
 
-        built_prompt = self.build_prompt(profile, user_prompt)
+        built_prompt = self.build_prompt(profile, self.last_clean_prompt or user_prompt)
         return Chat(
             model=self.model,
             api=self.api,
-            messages=context.get_messages_copy(),
+            messages=self._llm_messages(context),
             tools=self._get_tools_list(),
             system_prompt=built_prompt,
         )
@@ -281,7 +293,7 @@ class ChatEngine:
             on_tool_call=self._notify_tool_call,
             max_tool_rounds=self.max_tool_rounds,
         )
-        final_state = workflow.run(session, profile, context, user_prompt)
+        final_state = workflow.run(session, profile, context, self.last_clean_prompt or user_prompt)
         self.last_graph_state = final_state
         self.last_built_prompt = final_state.get("built_prompt")
 
@@ -308,8 +320,10 @@ class ChatEngine:
           et yield la réponse vérifiée.
         - Sinon, streame directement les tokens en temps réel depuis Chat.
         """
-        self._emit("input", "success", f"Message reçu ({len(user_prompt)} car.)")
-        refusal = self.check_guardrail(user_prompt)
+        self.last_clean_prompt = simplify(user_prompt) if self.simplify_prompt else None
+        clean_prompt = self.last_clean_prompt or user_prompt
+        self._emit("input", "success", f"Message reçu ({len(user_prompt)} → {len(clean_prompt)} car.)")
+        refusal = self.check_guardrail(clean_prompt)
         if refusal is not None:
             context.add(Message(role="user", content=user_prompt), api_client=self.api)
             context.add(Message(role="assistant", content=refusal), api_client=self.api)
@@ -367,7 +381,7 @@ class ChatEngine:
         return Chat(
             model=self.model,
             api=self.api,
-            messages=context.get_messages_copy(),
+            messages=self._llm_messages(context),
             tools=self._get_tools_list(),
             system_prompt=self.last_built_prompt,
         )

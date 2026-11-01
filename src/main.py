@@ -48,6 +48,7 @@ class SensAI:
         hallucination_grader: Optional[HallucinationGrader] = None,
         use_anti_hallucination: bool = False,
         max_hallucination_retries: int = 2,
+        use_simplifier: bool = True,
     ):
         resolved_model = model or config.DEFAULT_MODEL
         api_url = api_url or config.OLLAMA_HOST
@@ -81,6 +82,7 @@ class SensAI:
             guardrail=resolved_guardrail,
             hallucination_grader=resolved_grader,
             max_hallucination_retries=max_hallucination_retries,
+            simplify_prompt=use_simplifier,
         )
 
         # ── 4. Commandes du terminal ─────────────────────────────────

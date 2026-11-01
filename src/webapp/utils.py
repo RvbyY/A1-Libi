@@ -25,8 +25,10 @@ class WebAppController:
         self.visualizer = PipelineVisualizer()
         self.api.engine.on_event = self.visualizer.mark
 
-    def configure_pipeline(self, use_guardrail: bool, use_anti_hallucination: bool) -> str:
-        """Active ou désactive dynamiquement IntentGuardrail et AntiHallucinationWorkflow."""
+    def configure_pipeline(self, use_simplifier: bool, use_guardrail: bool, use_anti_hallucination: bool) -> str:
+        """Active ou désactive dynamiquement la simplification du prompt, IntentGuardrail et AntiHallucinationWorkflow."""
+        self.api.engine.simplify_prompt = use_simplifier
+
         if use_guardrail:
             self.api.engine.guardrail = IntentGuardrail(api=self.api.core.api, model=self.api.core.model)
         else:
@@ -96,6 +98,7 @@ class WebAppController:
         history: list,
         email: str,
         chat_id: int,
+        use_simplifier: bool,
         use_guardrail: bool,
         use_anti_hallucination: bool,
     ):
@@ -112,7 +115,7 @@ class WebAppController:
             yield "", history, self.visualizer.render_html(), self.build_inspector_markdown()
             return
 
-        self.configure_pipeline(use_guardrail, use_anti_hallucination)
+        self.configure_pipeline(use_simplifier, use_guardrail, use_anti_hallucination)
         history = list(history or []) + [{"role": "user", "content": message}]
 
         # 1. Branche Commande CLI (/help, /schedule, /recall, /debug...)
