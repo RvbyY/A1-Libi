@@ -1,12 +1,12 @@
-# 🧠 3. La mémoire
+# 3. La mémoire
 
 Cette page explique comment l'IA **se souvient**.
 
-[⬅️ Retour au sommaire](README.md)
+[Retour au sommaire](README.md)
 
 ---
 
-## 🎯 Le problème
+## Le problème
 
 Une IA ne peut lire qu'une **quantité limitée** de texte à la fois.
 
@@ -14,9 +14,9 @@ Si on lui envoie toute la conversation, elle finit par **saturer**.
 
 ---
 
-## 💡 La solution : deux mémoires
+## La solution : deux mémoires
 
-| | 🟢 Mémoire courte | 🔵 Mémoire longue |
+| | Mémoire courte | Mémoire longue |
 |---|---|---|
 | **Classe** | `Context` | `DeepContext` |
 | **Contenu** | Les derniers messages | Tous les anciens messages |
@@ -26,12 +26,12 @@ Si on lui envoie toute la conversation, elle finit par **saturer**.
 
 Image pour retenir :
 
-- 🟢 La mémoire courte, c'est **votre bureau**. Seulement ce qui sert maintenant.
-- 🔵 La mémoire longue, c'est **la bibliothèque**. On y va chercher un livre précis.
+- La mémoire courte, c'est **votre bureau**. Seulement ce qui sert maintenant.
+- La mémoire longue, c'est **la bibliothèque**. On y va chercher un livre précis.
 
 ---
 
-## 🟢 La mémoire courte (`Context`)
+## La mémoire courte (`Context`)
 
 ### Comment elle marche
 
@@ -62,7 +62,7 @@ le nouveau chat ne pouvait pas la retrouver.
 
 ---
 
-## 🔵 La mémoire longue (`DeepContext`)
+## La mémoire longue (`DeepContext`)
 
 ### Étape 1 : Transformer le texte en nombres
 
@@ -120,7 +120,7 @@ Le code se trouve dans `PromptBuilder.with_rag()` et `PromptBuilder.build()`
 
 ---
 
-## 🛟 Si Ollama ne répond pas
+## Si Ollama ne répond pas
 
 A1Libi ne plante pas.
 
@@ -136,7 +136,7 @@ C'est le **mode dégradé**.
 
 ---
 
-## 💾 Ce qui est sauvegardé
+## Ce qui est sauvegardé
 
 Tout est dans `galerelm.db`, **à la racine du projet**.
 Un chemin SQLite relatif (`DB_URL`, `--db`, `config.yaml`) est toujours résolu depuis la racine :
@@ -158,7 +158,7 @@ Quand vous relancez A1Libi :
 
 ---
 
-## 🔍 Vérifier la mémoire
+## Vérifier la mémoire
 
 Dans le terminal :
 
@@ -171,4 +171,4 @@ Dans le terminal :
 
 ---
 
-[⬅️ Page précédente : Architecture](02-architecture.md) · [➡️ Page suivante : Modèles](04-modeles.md)
+[Page précédente : Architecture](02-architecture.md) · [Page suivante : Modèles](04-modeles.md)

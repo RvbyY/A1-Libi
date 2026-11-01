@@ -1,8 +1,8 @@
-# 🚀 1. Démarrage
+# 1. Démarrage
 
 Cette page explique comment **installer** et **lancer** A1Libi.
 
-[⬅️ Retour au sommaire](README.md)
+[Retour au sommaire](README.md)
 
 > [!TIP]
 > Vous voulez juste **utiliser** A1Libi ?
@@ -13,7 +13,7 @@ Cette page explique comment **installer** et **lancer** A1Libi.
 
 ---
 
-## ✅ Ce qu'il faut avant de commencer
+## Ce qu'il faut avant de commencer
 
 - **Python** 3.12.
 - **Ollama** installé sur la machine.
@@ -21,7 +21,7 @@ Cette page explique comment **installer** et **lancer** A1Libi.
 
 ---
 
-## 📦 Étape 1 : Installer le projet
+## Étape 1 : Installer le projet
 
 Ouvrez un terminal dans le dossier du projet.
 
@@ -39,7 +39,7 @@ Ce [script](../scripts/A1Libi_dev) fait 3 choses :
 
 ---
 
-## ⚙️ Étape 2 : Vérifier le fichier `.env`
+## Étape 2 : Vérifier le fichier `.env`
 
 Les 3 réglages les plus importants :
 
@@ -72,7 +72,7 @@ Ordre de priorité : **arguments CLI > `config.yaml` > `.env` > valeurs par déf
 
 ---
 
-## 🧠 Étape 3 : Lancer Ollama
+## Étape 3 : Lancer Ollama
 
 Lancez :
 
@@ -95,7 +95,7 @@ Laissez ce terminal **ouvert**.
 
 ---
 
-## 💬 Étape 4 : Discuter
+## Étape 4 : Discuter
 
 Ouvrez un **second** terminal.
 
@@ -126,7 +126,7 @@ Tapez `/quit` pour quitter.
 
 ---
 
-## 🗄️ La base de données
+## La base de données
 
 - Elle est créée **automatiquement** au premier lancement.
 - Elle s'appelle `galerelm.db`.
@@ -143,7 +143,7 @@ rm galerelm.db
 
 ---
 
-## 🧪 Lancer les tests
+## Lancer les tests
 
 ```bash
 .venv/bin/pytest src/galerelm/unit_tests
@@ -155,4 +155,4 @@ rm galerelm.db
 
 ---
 
-[➡️ Page suivante : Architecture](02-architecture.md)
+[Page suivante : Architecture](02-architecture.md)

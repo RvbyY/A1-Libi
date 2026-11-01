@@ -1,12 +1,12 @@
-# ⌨️ 7. Le terminal
+# 7. Le terminal
 
 Cette page décrit l'utilisation d'A1Libi **dans le terminal**.
 
-[⬅️ Retour au sommaire](README.md)
+[Retour au sommaire](README.md)
 
 ---
 
-## 📦 Prérequis
+## Prérequis
 
 Le terminal utilise la librairie **rich**.
 
@@ -22,7 +22,7 @@ Elle sert à afficher les couleurs, le cadre d'accueil et le prompt.
 
 ---
 
-## ▶️ Lancer
+## Lancer
 
 1. Lancez Ollama (`./scripts/A1Libi_dev -back`).
 2. Dans un **autre** terminal :
@@ -33,7 +33,7 @@ Elle sert à afficher les couleurs, le cadre d'accueil et le prompt.
 
 ---
 
-## 👀 À quoi ça ressemble
+## À quoi ça ressemble
 
 Le style est celui d'un **terminal de hacker** : écriture verte.
 
@@ -64,7 +64,7 @@ Le style est celui d'un **terminal de hacker** : écriture verte.
 
 ---
 
-## 🔤 Message ou commande ?
+## Message ou commande ?
 
 | Vous tapez | Ce qui se passe |
 |------------|-----------------|
@@ -73,7 +73,7 @@ Le style est celui d'un **terminal de hacker** : écriture verte.
 
 ---
 
-## 📋 Les commandes
+## Les commandes
 
 ### Général
 
@@ -114,8 +114,8 @@ Exemple :
 ```
 └─❯ /recall où j'habite
 ── Résultats RAG pour "où j'habite" (2 trouvés) ──
-  1. 👤 [user] (score: 0.8123) J'habite à Paris
-  2. 🤖 [assistant] (score: 0.7710) Noté, vous habitez à Paris.
+  1. [user] (score: 0.8123) J'habite à Paris
+  2. [assistant] (score: 0.7710) Noté, vous habitez à Paris.
 ```
 
 ### Repartir de zéro
@@ -130,7 +130,7 @@ Exemple :
 
 ---
 
-## 🧩 Comment le code est organisé
+## Comment le code est organisé
 
 Fichier : `src/repl.py`
 
@@ -148,7 +148,7 @@ Fichier : `src/repl.py`
 
 ---
 
-## 🎨 Changer les couleurs
+## Changer les couleurs
 
 Toutes les couleurs sont dans **un seul** endroit : `THEME`, en haut de `src/repl.py`.
 
@@ -171,7 +171,7 @@ THEME = Theme({
 
 ---
 
-## ➕ Ajouter une commande
+## Ajouter une commande
 
 1. Ouvrez `src/repl.py`.
 2. Ajoutez une fonction :
@@ -216,11 +216,11 @@ Outils déjà prêts dans `Command` :
 | `self.success("...")` | Affiche une réussite |
 | `self.error("...")` | Affiche une erreur |
 | `self.preview(texte, 80)` | Coupe un texte trop long |
-| `self.icon(role)` | Donne l'icône d'un rôle (👤, 🤖…) |
+| `self.icon(role)` | Donne l'icône d'un rôle (utilisateur, assistant…) |
 
 ---
 
-## 📜 Les logs
+## Les logs
 
 Par défaut, les logs sont **cachés**.
 
@@ -250,4 +250,4 @@ Pour encore plus de détails, remplacez `INFO` par `DEBUG`.
 
 ---
 
-[⬅️ Page précédente : Application web](06-web-application.md) · [➡️ Page suivante : RapideAPI](08-rapideapi.md)
+[Page précédente : Application web](06-web-application.md) · [Page suivante : RapideAPI](08-rapideapi.md)

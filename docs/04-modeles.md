@@ -1,12 +1,12 @@
-# 🗃️ 4. Les modèles de données
+# 4. Les modèles de données
 
 Cette page décrit **chaque classe** du dossier `src/galerelm/models/`.
 
-[⬅️ Retour au sommaire](README.md)
+[Retour au sommaire](README.md)
 
 ---
 
-## 🧭 Vue d'ensemble
+## Vue d'ensemble
 
 ```mermaid
 erDiagram
@@ -26,7 +26,7 @@ Lecture :
 
 ---
 
-## 🧑 `Profile`
+## `Profile`
 
 Fichier : `profile.py`
 
@@ -46,7 +46,7 @@ Un utilisateur.
 
 ---
 
-## 🟢 `Context`
+## `Context`
 
 Fichier : `context.py`
 
@@ -73,7 +73,7 @@ Détails : [context.md](../src/galerelm/models/context.md)
 
 ---
 
-## 🔵 `DeepContext` et `LongTermMemory`
+## `DeepContext` et `LongTermMemory`
 
 Fichier : `deep_context.py`
 
@@ -100,7 +100,7 @@ Détails : [deep_context.md](../src/galerelm/models/deep_context.md)
 
 ---
 
-## ✉️ `Message` et `MessageList`
+## `Message` et `MessageList`
 
 Fichier : `message.py`
 
@@ -121,7 +121,7 @@ Un message de la conversation.
 
 ---
 
-## 💬 `Chat`
+## `Chat`
 
 Fichier : `chat.py`
 
@@ -146,7 +146,7 @@ Détails : [chat.md](../src/galerelm/models/chat.md)
 
 ---
 
-## ⚙️ `Options`
+## `Options`
 
 Fichier : `options.py`
 
@@ -170,7 +170,7 @@ Valeurs par défaut, réglages et justifications : [Paramètres de génération]
 
 ---
 
-## 📨 `ChatResponse`, `LogProb`, `TopLogProb`
+## `ChatResponse`, `LogProb`, `TopLogProb`
 
 Fichier : `response.py`
 
@@ -185,7 +185,7 @@ La **réponse** d'Ollama.
 
 ---
 
-## 🛠️ `Tools`, `ToolsFunction`, `ToolsList`
+## `Tools`, `ToolsFunction`, `ToolsList`
 
 Fichier : `tools.py`
 
@@ -196,7 +196,7 @@ Des **outils** que l'IA pourrait appeler.
 
 ---
 
-## 📦 `dto.py`
+## `dto.py`
 
 Les **objets de réponse** du wrapper.
 
@@ -204,7 +204,7 @@ Voir [Wrapper](05-wrapper.md).
 
 ---
 
-## 🧱 `base.py`
+## `base.py`
 
 Contient `Base`.
 
@@ -216,4 +216,4 @@ Toutes les classes sauvegardées héritent de `Base`.
 
 ---
 
-[⬅️ Page précédente : Mémoire](03-memoire.md) · [➡️ Page suivante : Wrapper](05-wrapper.md)
+[Page précédente : Mémoire](03-memoire.md) · [Page suivante : Wrapper](05-wrapper.md)

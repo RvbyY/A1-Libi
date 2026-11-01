@@ -1,4 +1,4 @@
-# 📘 Documentation A1Libi
+# Documentation A1Libi
 
 Bienvenue.
 
@@ -8,7 +8,7 @@ Elle est écrite pour être **facile à lire**.
 
 ---
 
-## 👓 Comment cette documentation est écrite
+## Comment cette documentation est écrite
 
 Elle suit des règles pour aider les personnes **dyslexiques**.
 
@@ -29,7 +29,7 @@ Elle suit des règles pour aider les personnes **dyslexiques**.
 
 ---
 
-## 🗺️ Sommaire
+## Sommaire
 
 Lisez les pages dans l'ordre si vous découvrez le projet.
 
@@ -53,7 +53,7 @@ Lisez les pages dans l'ordre si vous découvrez le projet.
 
 ---
 
-## ⚡ A1Libi en 5 lignes
+## A1Libi en 5 lignes
 
 1. A1Libi est un **framework** pour discuter avec une **IA locale**.
 2. L'IA tourne sur votre machine grâce à **Ollama**.

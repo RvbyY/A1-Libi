@@ -7,7 +7,7 @@ Il vous montre ensuite comment l'utiliser de deux manières :
 
 ---
 
-## 🛠️ 1. Installation du projet
+## 1. Installation du projet
 
 **Étape 1 : Préparer l'environnement Python**
 A1Libi a besoin de Python 3.10 ou plus.
@@ -38,7 +38,7 @@ Vous pouvez modifier ces valeurs dans le fichier `.env` si vous le souhaitez.
 
 ---
 
-## 💻 2. Utilisation dans le Terminal (CLI)
+## 2. Utilisation dans le Terminal (CLI)
 
 C'est la méthode la plus rapide pour tester l'IA.
 Tout se passe directement dans votre invite de commande.
@@ -64,7 +64,7 @@ Tapez ces commandes dans le chat pour contrôler l'IA :
 
 ---
 
-## 🌐 3. Utilisation pour le Web (Le Wrapper)
+## 3. Utilisation pour le Web (Le Wrapper)
 
 Le `SensAIWrapper` est conçu pour les développeurs.
 Il est parfait si vous voulez créer une interface web (avec Gradio, Streamlit ou FastAPI).
