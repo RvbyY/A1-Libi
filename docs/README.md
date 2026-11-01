@@ -45,8 +45,10 @@ Lisez les pages dans l'ordre si vous découvrez le projet.
 | 8 | [RapideAPI](08-rapideapi.md) | Le client HTTP |
 | 9 | [Glossaire](09-glossaire.md) | Les mots techniques expliqués |
 | 10 | [Problèmes connus](10-problemes-connus.md) | Ce qui reste à corriger |
-| 11 | [Classification d'intention](11-intent-classifier.md) | Le filtre qui bloque les demandes dangereuses |
-| 12 | [Infrastructure](12-infrastructure.md) | Les scripts, Docker et le fichier `.env` |
+| 11 | [Intent classifier](11-intent-classifier.md) | Classer l'intention d'une demande |
+| 12 | [Architecture des context tools](12-architecture-context-tools.md) | Organisation des tools |
+| 13 | [Context tools](13-context-tools.md) | Fonctionnement de chaque tool |
+| 14 | [User stories](user_stories/README.md) | Les user stories de chaque fonctionnalité |
 | 15 | [Paramètres de génération](15-parametres-generation.md) | Les réglages envoyés au modèle, où les changer et pourquoi |
 | 16 | [Benchmark des ressources](16-benchmark-ressources.md) | Vitesse, latence et mémoire du modèle sur la machine, protocole et résultats |
 | 17 | [Améliorations mesurées](17-ameliorations-mesurees.md) | Chaque amélioration comparée à sa baseline, sur un jeu de référence |

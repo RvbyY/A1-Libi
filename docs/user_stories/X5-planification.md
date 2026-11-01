@@ -1,0 +1,121 @@
+# X5 : Planification de tâches
+
+[Retour aux user stories](README.md)
+
+**Statut :** Partiel (les tâches sont créées et enregistrées, mais le `TaskRunner` n'est jamais démarré)
+
+Fiche technique détaillée : [Scheduled AI Tasks](../features/scheduled-tasks.md).
+
+---
+
+## Ce que demande le sujet
+
+- Exécuter en autonomie des tâches récurrentes à intervalles réguliers (ex. rapports quotidiens).
+
+## Ce que fait SensAI
+
+- `/schedule` crée une tâche : `at HH:MM`, `in <durée>`, `daily HH:MM` ou `weekly <jour> HH:MM`.
+- Le modèle peut aussi créer, terminer ou exporter une tâche avec les tools `create_task`, `complete_task`, `send_task_file`.
+- Les tâches sont enregistrées en base (`ScheduledTask`).
+- `TaskRunner` exécute les tâches dues avec le même moteur de chat, puis reprogramme les tâches récurrentes.
+
+---
+
+## User story 1 : programmer un rappel
+
+**En tant qu'** utilisateur qui apprend le japonais,
+**je veux** taper `/schedule in 30m révise tes kanji`,
+**afin que** l'assistant me le rappelle au bon moment.
+
+### Critères d'acceptation
+
+- [x] Les formats `at`, `in` (`10s`, `30m`, `2h`, `1d`), `daily` et `weekly` sont reconnus.
+- [x] Un format invalide affiche l'usage attendu.
+- [x] La tâche est enregistrée en base avec son heure d'exécution.
+- [ ] La tâche s'exécute à l'heure prévue (le `TaskRunner` n'est pas encore lancé par la CLI ni la webapp).
+
+**Vérifié par :** `test_schedule_parser_modes_and_reschedule`, `test_create_scheduled_task`.
+
+---
+
+## User story 2 : un rapport chaque jour
+
+**En tant qu'** utilisateur,
+**je veux** programmer `/schedule daily 18:00 résume mes progrès`,
+**afin de** recevoir un résumé chaque soir sans le redemander.
+
+### Critères d'acceptation
+
+- [x] Une tâche `daily` ou `weekly` garde sa récurrence.
+- [x] Seules les tâches passées et en attente sont considérées comme dues.
+- [x] Une tâche peut être terminée ou annulée.
+- [x] Après exécution, une tâche récurrente est reprogrammée à la prochaine échéance.
+
+**Vérifié par :** `test_get_due_tasks_returns_past_pending_tasks`, `test_get_due_tasks_ignores_future_tasks`,
+`test_mark_completed`, `test_cancel_task`.
+
+---
+
+## Ce qu'il reste à faire
+
+Objectif : que les tâches programmées **s'exécutent vraiment**, sans intervention.
+
+1. **Démarrer le runner.**
+   - Lancer `TaskRunner.run_forever()` dans un thread en arrière-plan (`daemon=True`) au démarrage
+     de la CLI (`src/main.py`) et de la webapp.
+   - Ajouter une option `--no-scheduler` pour le désactiver.
+2. **Isoler l'exécution.**
+   - Aujourd'hui, `TaskRunner` reçoit `executor=self.chat` : il utiliserait la même session SQLAlchemy
+     et le même chat que le terminal, depuis un autre thread.
+   - Donner au runner sa propre session, et un chat dédié « Tâches planifiées » par profil.
+3. **Prévenir l'utilisateur.**
+   - Enregistrer le résultat dans ce chat dédié.
+   - En CLI, l'afficher sans casser la ligne en cours de saisie.
+   - Dans la webapp, le faire apparaître dans la liste des conversations.
+4. **Tester.**
+   - Le runner exécute une tâche due avec un faux exécuteur, reprogramme une tâche récurrente,
+     marque une tâche en échec, et s'arrête proprement.
+
+**Quand le considérer comme fait :** `/schedule in 1m dis bonjour` produit la réponse une minute plus tard,
+sans action de l'utilisateur, dans le chat « Tâches planifiées ».
+
+---
+
+## Preuves
+
+### Code
+
+- [`src/commands/schedule.py`](../../src/commands/schedule.py)
+- [`src/scheduler/parser.py`](../../src/scheduler/parser.py)
+- [`src/scheduler/task_manager.py`](../../src/scheduler/task_manager.py)
+- [`src/scheduler/runner.py`](../../src/scheduler/runner.py)
+- [`src/tools/tasks/create_task.py`](../../src/tools/tasks/create_task.py)
+
+### Tests automatisés
+
+Les tests cités dans les critères d'acceptation se relancent avec :
+
+```bash
+.venv/bin/python -m pytest -q \
+  src/galerelm/unit_tests/test_scheduled_task.py::test_schedule_parser_modes_and_reschedule \
+  src/galerelm/unit_tests/test_scheduled_task.py::test_create_scheduled_task \
+  src/galerelm/unit_tests/test_scheduled_task.py::test_get_due_tasks_returns_past_pending_tasks \
+  src/galerelm/unit_tests/test_scheduled_task.py::test_get_due_tasks_ignores_future_tasks \
+  src/galerelm/unit_tests/test_scheduled_task.py::test_mark_completed \
+  src/galerelm/unit_tests/test_scheduled_task.py::test_cancel_task
+```
+
+Résultat au 1er novembre 2026 : 6 tests passés, 0 en échec.
+
+### Démonstration manuelle
+
+1. Lancer le chat et taper `/schedule in 1m dis bonjour` : la tâche est confirmée avec son heure.
+2. Taper `/schedule demain` : l'usage attendu est affiché.
+3. Limite visible : la tâche n'est pas exécutée tant que le `TaskRunner` n'est pas démarré.
+
+---
+
+## Limites
+
+- `TaskRunner.run_forever()` n'est appelé nulle part : il faut le démarrer dans un thread au lancement.
+- Le résultat d'une tâche est seulement affiché dans le terminal (`print`) : il n'est pas enregistré dans un chat.
