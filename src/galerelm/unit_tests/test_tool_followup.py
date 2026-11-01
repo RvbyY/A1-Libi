@@ -224,6 +224,38 @@ def test_discord_reference_uses_latest_assistant_response():
     assert discord_api.messages == ["I need to use the Discord tool."]
 
 
+def test_discord_textual_json_array_sends_to_all_recipients():
+    from src.tools import Discord
+
+    class FakeDiscordAPI:
+        def __init__(self):
+            self.messages = []
+
+        def post(self, endpoint, json=None, **kwargs):
+            if endpoint == "users/@me/channels":
+                return {"id": f"channel-{len(self.messages)}"}
+            self.messages.append(json["content"])
+            return {"id": "message"}
+
+    discord_api = FakeDiscordAPI()
+    discord = Discord(token="fake-token", api_client=discord_api)
+    fake = ScriptedOllama(
+        text_chunk(
+            '[{"action":"discord","parameters":{"recipient":"1288067527112396892",'
+            '"content":"hello"}},{"action":"discord","parameters":'
+            '{"recipient":"521302266959888394","content":"hello"}}]'
+        ),
+        text_chunk("The messages were sent."),
+    )
+    app = SensAI(db_url="sqlite:///:memory:", tool_registry=ToolRegistry([discord]))
+    app.api = app.chat_engine.api = fake
+    app.load_or_create_profile(email="discord-batch@test.com", name="Discord")
+    app.chat_engine.confirm_tool = lambda name, arguments: True
+
+    assert app.chat("Send hello to two Discord users.") == "The messages were sent."
+    assert discord_api.messages == ["hello", "hello"]
+
+
 def test_tool_rounds_are_bounded():
     fake = ScriptedOllama(tool_call_chunk(), repeat_last=True)  # le modèle rappelle l'outil sans fin
     app, tool = make_app(fake)

@@ -131,7 +131,7 @@ class Chat:
             else:
                 textual_tool_call = self._parse_textual_tool_call(final_chunk["message"]["content"])
                 if textual_tool_call:
-                    final_chunk["message"]["tool_calls"] = [textual_tool_call]
+                    final_chunk["message"]["tool_calls"] = textual_tool_call
                     final_chunk["message"]["content"] = ""
             if textual_tool_call is None and full_response:
                 yield "".join(full_response)
@@ -142,7 +142,7 @@ class Chat:
                 f"Durée: {self.last_response.eval_duration / 1e9:.2f}s)"
             )
 
-    def _parse_textual_tool_call(self, content: str) -> Optional[dict]:
+    def _parse_textual_tool_call(self, content: str) -> Optional[list[dict]]:
         """Convertit un appel JSON produit en texte par les modèles sans tool-calling natif."""
         candidate = content.strip()
         fenced = re.search(r"```(?:json)?\s*(.*?)\s*```", candidate, re.IGNORECASE | re.DOTALL)
@@ -153,14 +153,47 @@ class Chat:
         except json.JSONDecodeError:
             payload = None
 
-        if isinstance(payload, dict) and isinstance(payload.get("tool_calls"), list):
-            payload = payload["tool_calls"][0] if payload["tool_calls"] else None
+        if isinstance(payload, list):
+            payload = payload
+        elif isinstance(payload, dict) and isinstance(payload.get("tool_calls"), list):
+            payload = payload["tool_calls"]
         elif isinstance(payload, dict) and isinstance(payload.get("tool_call"), dict):
             payload = payload["tool_call"]
 
+        payloads = payload if isinstance(payload, list) else [payload]
+        calls = []
+        for item in payloads:
+            call = self._parse_textual_tool_call_item(item)
+            if call is None:
+                return None
+            calls.append(call)
+        discord_calls = [
+            call for call in calls
+            if call["function"]["name"] == "discord"
+            and isinstance(call["function"]["arguments"].get("content"), str)
+        ]
+        if len(discord_calls) > 1 and len({
+            call["function"]["arguments"]["content"] for call in discord_calls
+        }) == 1:
+            first = discord_calls[0]["function"]["arguments"]
+            recipients = []
+            for call in discord_calls:
+                arguments = call["function"]["arguments"]
+                recipients.extend(arguments.get("recipients", [arguments.get("recipient", "")]))
+            calls = [discord_calls[0]]
+            first = {**first, "recipients": list(dict.fromkeys(recipients))}
+            first.pop("recipient", None)
+            calls[0]["function"]["arguments"] = first
+        return calls or None
+
+    def _parse_textual_tool_call_item(self, payload: object) -> Optional[dict]:
+        if isinstance(payload, dict) and isinstance(payload.get("parameters"), dict):
+            payload = {
+                "name": payload.get("name") or payload.get("action"),
+                "arguments": payload["parameters"],
+            }
         if isinstance(payload, dict) and isinstance(payload.get("function"), dict):
             payload = payload["function"]
-
         if isinstance(payload, dict) and isinstance(payload.get("arguments"), dict):
             name = payload.get("name") or payload.get("tool")
             arguments = payload["arguments"]
@@ -216,6 +249,8 @@ class Chat:
             recipient_ids = re.findall(r"\b\d{17,20}\b", request)
             if len(recipient_ids) == 1:
                 resolved["recipient"] = recipient_ids[0]
+            elif recipient_ids:
+                resolved["recipients"] = list(dict.fromkeys(recipient_ids))
 
         content = str(resolved.get("content", "")).strip()
         if not content or self._is_previous_response_reference(content) or (
@@ -264,7 +299,7 @@ class Chat:
 
         recipient_ids = re.findall(r"\b\d{17,20}\b", request)
         content_match = re.search(r"""["“](.+?)["”]""", request, re.DOTALL)
-        if len(recipient_ids) != 1:
+        if not recipient_ids:
             return None, {}
         if content_match is None:
             content = self._latest_assistant_content() if self._is_previous_response_reference(request) else ""
@@ -273,7 +308,8 @@ class Chat:
         if not content:
             return None, {}
         return "discord", {
-            "recipient": recipient_ids[0],
+            ("recipients" if len(recipient_ids) > 1 else "recipient"):
+            (list(dict.fromkeys(recipient_ids)) if len(recipient_ids) > 1 else recipient_ids[0]),
             "content": content,
         }
 
