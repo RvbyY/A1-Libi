@@ -1,12 +1,12 @@
-# 🧱 Socle MVP : chatbot en ligne de commande
+# Socle MVP : chatbot en ligne de commande
 
-[⬅️ Retour aux user stories](README.md)
+[Retour aux user stories](README.md)
 
-**Statut :** ✅ Fait
+**Statut :** Fait
 
 ---
 
-## 📋 Ce que demande le sujet
+## Ce que demande le sujet
 
 - Un chatbot en ligne de commande.
 - Des réponses affichées en **streaming**.
@@ -14,7 +14,7 @@
 - La gestion des erreurs : modèle absent, entrée vide, réseau coupé.
 - Le choix du modèle par argument CLI ou par fichier de configuration.
 
-## ⚙️ Ce que fait SensAI
+## Ce que fait SensAI
 
 - `src/main.py` lance la boucle du terminal (`TerminalREPL`).
 - Les réponses arrivent token par token depuis l'API HTTP d'Ollama.
@@ -24,13 +24,13 @@
 
 ---
 
-## 👤 User story 1 : voir la réponse s'écrire
+## User story 1 : voir la réponse s'écrire
 
 **En tant qu'** utilisateur du terminal,
 **je veux** voir la réponse de l'assistant s'afficher au fur et à mesure,
 **afin de** commencer à lire sans attendre la fin de la génération.
 
-### ✅ Critères d'acceptation
+### Critères d'acceptation
 
 - [x] Les tokens s'affichent dès qu'Ollama les envoie.
 - [x] La réponse complète est enregistrée dans l'historique à la fin.
@@ -40,13 +40,13 @@
 
 ---
 
-## 👤 User story 2 : choisir mon modèle
+## User story 2 : choisir mon modèle
 
 **En tant qu'** utilisateur,
 **je veux** choisir le modèle avec `--model` ou dans `config.yaml`,
 **afin de** changer de modèle sans modifier le code.
 
-### ✅ Critères d'acceptation
+### Critères d'acceptation
 
 - [x] `--model` a priorité sur `config.yaml`, qui a priorité sur `.env`.
 - [x] Une clé inconnue ou une valeur invalide dans le YAML est refusée avec un message clair.
@@ -57,13 +57,13 @@
 
 ---
 
-## 👤 User story 3 : comprendre une erreur
+## User story 3 : comprendre une erreur
 
 **En tant qu'** utilisateur,
 **je veux** un message clair quand Ollama est éteint ou quand le modèle n'est pas installé,
 **afin de** savoir quelle commande lancer pour corriger le problème.
 
-### ✅ Critères d'acceptation
+### Critères d'acceptation
 
 - [x] Ollama injoignable : le message propose `ollama serve`.
 - [x] Modèle absent : le message propose `ollama pull <modèle>` et liste les modèles installés.
@@ -75,6 +75,45 @@
 
 ---
 
-## ⚠️ Limites
+## Preuves
+
+### Code
+
+- [`src/main.py`](../../src/main.py)
+- [`src/repl.py`](../../src/repl.py)
+- [`src/config.py`](../../src/config.py)
+- [`src/galerelm/ollama.py`](../../src/galerelm/ollama.py)
+- [`src/rapideAPI/client.py`](../../src/rapideAPI/client.py)
+- [`config.example.yaml`](../../config.example.yaml)
+
+### Tests automatisés
+
+Les tests cités dans les critères d'acceptation se relancent avec :
+
+```bash
+.venv/bin/python -m pytest -q \
+  src/galerelm/unit_tests/test_engine_and_repl.py::test_chat_engine_stream_and_persistence \
+  src/galerelm/unit_tests/test_config_cli.py::test_cli_overrides_yaml \
+  src/galerelm/unit_tests/test_config_cli.py::test_load_yaml_rejects_invalid_files \
+  src/galerelm/unit_tests/test_config_cli.py::test_default_config_file_is_loaded_when_present \
+  src/galerelm/unit_tests/test_ollama_errors.py::test_connection_refused_becomes_unreachable \
+  src/galerelm/unit_tests/test_ollama_errors.py::test_streamed_404_becomes_model_not_found \
+  src/galerelm/unit_tests/test_config_cli.py::test_main_stops_when_model_is_missing \
+  src/galerelm/unit_tests/test_ollama_errors.py::test_check_ollama_unreachable
+```
+
+Résultat au 1er novembre 2026 : 12 tests passés, 0 en échec.
+
+### Démonstration manuelle
+
+1. Lancer Ollama : `./script/backend.sh`.
+2. Lancer le chat : `PYTHONPATH=. .venv/bin/python src/main.py --model llama3.2`.
+3. Poser deux questions liées : la réponse s'affiche au fur et à mesure et la seconde tient compte de la première.
+4. Arrêter Ollama puis relancer : le message « Impossible de joindre Ollama » propose `ollama serve`.
+5. Lancer avec `--model modele-inexistant` : le message propose `ollama pull` et liste les modèles installés.
+
+---
+
+## Limites
 
 - Si la génération échoue, le message de l'utilisateur reste dans l'historique sans réponse.

@@ -1,18 +1,18 @@
-# ⏰ X5 : Planification de tâches
+# X5 : Planification de tâches
 
-[⬅️ Retour aux user stories](README.md)
+[Retour aux user stories](README.md)
 
-**Statut :** 🟡 Partiel (les tâches sont créées et enregistrées, mais le `TaskRunner` n'est jamais démarré)
+**Statut :** Partiel (les tâches sont créées et enregistrées, mais le `TaskRunner` n'est jamais démarré)
 
 Fiche technique détaillée : [Scheduled AI Tasks](../features/scheduled-tasks.md).
 
 ---
 
-## 📋 Ce que demande le sujet
+## Ce que demande le sujet
 
 - Exécuter en autonomie des tâches récurrentes à intervalles réguliers (ex. rapports quotidiens).
 
-## ⚙️ Ce que fait SensAI
+## Ce que fait SensAI
 
 - `/schedule` crée une tâche : `at HH:MM`, `in <durée>`, `daily HH:MM` ou `weekly <jour> HH:MM`.
 - Le modèle peut aussi créer, terminer ou exporter une tâche avec les tools `create_task`, `complete_task`, `send_task_file`.
@@ -21,13 +21,13 @@ Fiche technique détaillée : [Scheduled AI Tasks](../features/scheduled-tasks.m
 
 ---
 
-## 👤 User story 1 : programmer un rappel
+## User story 1 : programmer un rappel
 
 **En tant qu'** utilisateur qui apprend le japonais,
 **je veux** taper `/schedule in 30m révise tes kanji`,
 **afin que** l'assistant me le rappelle au bon moment.
 
-### ✅ Critères d'acceptation
+### Critères d'acceptation
 
 - [x] Les formats `at`, `in` (`10s`, `30m`, `2h`, `1d`), `daily` et `weekly` sont reconnus.
 - [x] Un format invalide affiche l'usage attendu.
@@ -38,13 +38,13 @@ Fiche technique détaillée : [Scheduled AI Tasks](../features/scheduled-tasks.m
 
 ---
 
-## 👤 User story 2 : un rapport chaque jour
+## User story 2 : un rapport chaque jour
 
 **En tant qu'** utilisateur,
 **je veux** programmer `/schedule daily 18:00 résume mes progrès`,
 **afin de** recevoir un résumé chaque soir sans le redemander.
 
-### ✅ Critères d'acceptation
+### Critères d'acceptation
 
 - [x] Une tâche `daily` ou `weekly` garde sa récurrence.
 - [x] Seules les tâches passées et en attente sont considérées comme dues.
@@ -56,7 +56,41 @@ Fiche technique détaillée : [Scheduled AI Tasks](../features/scheduled-tasks.m
 
 ---
 
-## ⚠️ Limites
+## Preuves
+
+### Code
+
+- [`src/commands/schedule.py`](../../src/commands/schedule.py)
+- [`src/scheduler/parser.py`](../../src/scheduler/parser.py)
+- [`src/scheduler/task_manager.py`](../../src/scheduler/task_manager.py)
+- [`src/scheduler/runner.py`](../../src/scheduler/runner.py)
+- [`src/tools/tasks/create_task.py`](../../src/tools/tasks/create_task.py)
+
+### Tests automatisés
+
+Les tests cités dans les critères d'acceptation se relancent avec :
+
+```bash
+.venv/bin/python -m pytest -q \
+  src/galerelm/unit_tests/test_scheduled_task.py::test_schedule_parser_modes_and_reschedule \
+  src/galerelm/unit_tests/test_scheduled_task.py::test_create_scheduled_task \
+  src/galerelm/unit_tests/test_scheduled_task.py::test_get_due_tasks_returns_past_pending_tasks \
+  src/galerelm/unit_tests/test_scheduled_task.py::test_get_due_tasks_ignores_future_tasks \
+  src/galerelm/unit_tests/test_scheduled_task.py::test_mark_completed \
+  src/galerelm/unit_tests/test_scheduled_task.py::test_cancel_task
+```
+
+Résultat au 1er novembre 2026 : 6 tests passés, 0 en échec.
+
+### Démonstration manuelle
+
+1. Lancer le chat et taper `/schedule in 1m dis bonjour` : la tâche est confirmée avec son heure.
+2. Taper `/schedule demain` : l'usage attendu est affiché.
+3. Limite visible : la tâche n'est pas exécutée tant que le `TaskRunner` n'est pas démarré.
+
+---
+
+## Limites
 
 - `TaskRunner.run_forever()` n'est appelé nulle part : il faut le démarrer dans un thread au lancement.
 - Le résultat d'une tâche est seulement affiché dans le terminal (`print`) : il n'est pas enregistré dans un chat.

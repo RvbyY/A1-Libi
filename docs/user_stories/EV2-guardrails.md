@@ -1,17 +1,17 @@
-# 🛡️ EV2 : Guardrails
+# EV2 : Guardrails
 
-[⬅️ Retour aux user stories](README.md)
+[Retour aux user stories](README.md)
 
-**Statut :** 🟡 Partiel (filtre en entrée fait ; anonymisation en sortie à faire)
+**Statut :** Partiel (filtre en entrée fait ; anonymisation en sortie à faire)
 
 ---
 
-## 📋 Ce que demande le sujet
+## Ce que demande le sujet
 
 - Un filtre en entrée qui bloque les requêtes hors périmètre.
 - Un filtre en sortie qui anonymise les données personnelles.
 
-## ⚙️ Ce que fait SensAI
+## Ce que fait SensAI
 
 - `IntentGuardrail` classe chaque demande en `LEGAL`, `ILLEGAL` ou `AMBIGUOUS` avec le LLM.
 - Le classement est fait en JSON, à température 0.
@@ -20,13 +20,13 @@
 
 ---
 
-## 👤 User story 1 : bloquer une demande dangereuse
+## User story 1 : bloquer une demande dangereuse
 
 **En tant qu'** utilisateur responsable du déploiement,
 **je veux** que les demandes illégales ou dangereuses soient refusées avant d'atteindre le modèle,
 **afin que** l'assistant ne produise pas de contenu nuisible.
 
-### ✅ Critères d'acceptation
+### Critères d'acceptation
 
 - [x] La demande est classée avant la génération.
 - [x] Une demande classée `ILLEGAL` reçoit un message de refus, sans appel au modèle de chat.
@@ -36,13 +36,13 @@
 
 ---
 
-## 👤 User story 2 : un classement robuste
+## User story 2 : un classement robuste
 
 **En tant que** développeur,
 **je veux** que le classifieur gère les réponses floues ou mal formées du modèle,
 **afin que** le guardrail ne laisse pas passer une demande par erreur.
 
-### ✅ Critères d'acceptation
+### Critères d'acceptation
 
 - [x] Le JSON est extrait même s'il est entouré de texte.
 - [x] Les booléens (`controlled_substance`, `criminal_activity`…) priment sur la catégorie annoncée.
@@ -53,7 +53,36 @@
 
 ---
 
-## ⚠️ Limites
+## Preuves
+
+### Code
+
+- [`src/galerelm/intent_classifier.py`](../../src/galerelm/intent_classifier.py)
+- [`src/galerelm/engine.py`](../../src/galerelm/engine.py)
+
+### Tests automatisés
+
+Les tests cités dans les critères d'acceptation se relancent avec :
+
+```bash
+.venv/bin/python -m pytest -q \
+  src/galerelm/unit_tests/test_engine_and_repl.py::test_chat_engine_guardrail_blocking \
+  src/galerelm/unit_tests/test_intent_classifier.py::test_evaluate_policies \
+  src/galerelm/unit_tests/test_intent_classifier.py::test_extract_json_and_parse_simple_category \
+  src/galerelm/unit_tests/test_intent_classifier.py::test_classify_boolean_overrides_category \
+  src/galerelm/unit_tests/test_intent_classifier.py::test_classify_triggers_resolve_ambiguity_on_ambiguous_or_invalid_json
+```
+
+Résultat au 1er novembre 2026 : 5 tests passés, 0 en échec.
+
+### Démonstration manuelle
+
+1. Lancer la webapp (`./script/frontend.sh`) et cocher la case guardrail.
+2. Envoyer une demande clairement illégale : le message de refus s'affiche et le visualiseur marque l'étape guardrail en erreur.
+
+---
+
+## Limites
 
 - Pas de filtre en sortie : les données personnelles ne sont pas anonymisées.
 - Activable dans la webapp (case à cocher), pas encore depuis la CLI.

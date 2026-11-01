@@ -1,4 +1,4 @@
-# 📖 User stories
+# User stories
 
 Cette page regroupe les user stories de chaque fonctionnalité implémentée.
 
@@ -17,28 +17,42 @@ Chaque fiche contient :
 Une case cochée `[x]` est vérifiée par un test automatisé.
 Une case vide `[ ]` reste à faire.
 
-[⬅️ Retour au sommaire](../README.md)
+Chaque fiche se termine par une section **Preuves** :
+
+- les fichiers de code qui implémentent la fonctionnalité ;
+- la commande qui relance les tests cités, et son résultat ;
+- une démonstration manuelle, étape par étape.
+
+L'état de chaque feature du sujet est suivi dans la [checklist des features](feature-checklist.md).
+
+Pour relancer tous les tests du projet :
+
+```bash
+.venv/bin/python -m pytest -q
+```
+
+[Retour au sommaire](../README.md)
 
 ---
 
-## 🗂️ Fonctionnalités implémentées
+## Fonctionnalités implémentées
 
 | Fiche | Catalogue | Statut |
 |-------|-----------|--------|
-| [Socle MVP](00-socle-mvp.md) | Chatbot CLI, streaming, historique, erreurs, choix du modèle | ✅ Fait |
-| [M1 : Persistance et profils](M1-persistance-profils.md) | Mémoire et contexte | ✅ Fait |
-| [R1 : RAG basique](R1-rag-basique.md) | RAG | 🟡 Partiel |
-| [T1 : Appel d'outils](T1-appel-outils.md) | Outils et exécution | ✅ Fait |
-| [A3 : Human-in-the-loop](A3-human-in-the-loop.md) | Orchestration | ✅ Fait (CLI) |
-| [EV1 : Évaluation automatique](EV1-evaluation-automatique.md) | Évaluation et sécurité | 🟡 Partiel |
-| [EV2 : Guardrails](EV2-guardrails.md) | Évaluation et sécurité | 🟡 Partiel |
-| [EV3 : Monitoring](EV3-monitoring.md) | Évaluation et sécurité | 🟡 Partiel |
-| [X1 : Interface web](X1-interface-web.md) | Expérience utilisateur | ✅ Fait |
-| [X5 : Planification](X5-planification.md) | Expérience utilisateur | 🟡 Partiel |
+| [Socle MVP](B1-socle-mvp.md) | Chatbot CLI, streaming, historique, erreurs, choix du modèle | Fait |
+| [M1 : Persistance et profils](M1-persistance-profils.md) | Mémoire et contexte | Fait |
+| [R1 : RAG basique](R1-rag-basique.md) | RAG | Partiel |
+| [T1 : Appel d'outils](T1-appel-outils.md) | Outils et exécution | Partiel |
+| [A3 : Human-in-the-loop](A3-human-in-the-loop.md) | Orchestration | Fait (CLI) |
+| [EV1 : Évaluation automatique](EV1-evaluation-automatique.md) | Évaluation et sécurité | Partiel |
+| [EV2 : Guardrails](EV2-guardrails.md) | Évaluation et sécurité | Partiel |
+| [EV3 : Monitoring](EV3-monitoring.md) | Évaluation et sécurité | Partiel |
+| [X1 : Interface web](X1-interface-web.md) | Expérience utilisateur | Partiel |
+| [X5 : Planification](X5-planification.md) | Expérience utilisateur | Partiel |
 
 ---
 
-## ⬜ Fonctionnalités non implémentées
+## Fonctionnalités non implémentées
 
 Elles n'ont pas de user stories : le sujet en demande pour les fonctionnalités **implémentées**.
 
