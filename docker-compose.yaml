@@ -22,7 +22,9 @@ services:
     image: ollama/ollama
     env_file: .env
     environment:
-      OLLAMA_HOST: ${OLLAMA_HOST}
+      HF_MODEL: ${HF_MODEL:?HF_MODEL must be set in .env}
+      EMBED_MODEL: ${EMBED_MODEL:-nomic-embed-text}
+      OLLAMA_HOST: http://ollama:11434
     entrypoint: ["sh", "-c", "ollama pull \"$$HF_MODEL\" && ollama pull \"$$EMBED_MODEL\""]
     depends_on:
       ollama:
@@ -35,9 +37,11 @@ services:
     image: a1libi
     env_file: .env
     environment:
-      OLLAMA_HOST: ${OLLAMA_HOST}
+      HF_MODEL: ${HF_MODEL:?HF_MODEL must be set in .env}
+      EMBED_MODEL: ${EMBED_MODEL:-nomic-embed-text}
+      OLLAMA_HOST: http://ollama:11434
     ports:
-      - "${GRADIO_SERVER_PORT}:${GRADIO_SERVER_PORT}"
+      - "${GRADIO_SERVER_PORT:-7860}:${GRADIO_SERVER_PORT:-7860}"
     depends_on:
       ollama-pull:
         condition: service_completed_successfully

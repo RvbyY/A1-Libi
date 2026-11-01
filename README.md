@@ -25,46 +25,48 @@
 
 Il faut seulement [Docker](https://docs.docker.com/get-docker/).
 
-```bash
-./setup.sh```
+## Run with Docker
 
-## Run
-
-Start Ollama and pull the model (in a first terminal):
+Prepare the Docker images and the environment:
 
 ```bash
-./script/backend.sh
+./scripts/A1Libi -setup
 ```
 
-Then start the CLI chatbot (in a second terminal):
+Start Ollama, download the configured models, and launch the web application:
 
 ```bash
-PYTHONPATH=. .venv/bin/python src/main.py
+./scripts/A1Libi -run
+```
+
+Open **http://localhost:7860** in your browser. Follow the startup logs with:
+
+```bash
+./scripts/A1Libi -logs
 ```
 
 ### Choosing the model
 
-The model can be selected without touching the code, either on the command line:
+For the Docker setup, edit `HF_MODEL` and `EMBED_MODEL` in `.env`, then restart the
+services:
 
 ```bash
-PYTHONPATH=. .venv/bin/python src/main.py --model qwen2.5:7b
+./scripts/A1Libi -stop
+./scripts/A1Libi -run
 ```
 
-or in a YAML configuration file (see [config.example.yaml](config.example.yaml)):
+To pass a one-off model override to the CLI container:
 
 ```bash
-cp config.example.yaml config.yaml
-PYTHONPATH=. .venv/bin/python src/main.py                         # ./config.yaml is loaded automatically
-PYTHONPATH=. .venv/bin/python src/main.py --config other.yaml     # or pass a file explicitly
+docker compose run --rm app python src/main.py --model qwen2.5:7b
 ```
 
-Priority: CLI arguments > YAML file > environment variables (`.env`) > defaults.
-Run `src/main.py --help` for every option (`--host`, `--embed-model`, `--db`, `--skip-check`).
+Run `docker compose run --rm app python src/main.py --help` for every option.
 
 ### Anti-hallucination loop
 
 ```bash
-PYTHONPATH=. .venv/bin/python src/main.py --anti-hallucination --max-retries 3
+docker compose run --rm app python src/main.py --anti-hallucination --max-retries 3
 ```
 
 Each answer is checked by an LLM judge against the known facts (RAG memories, tool outputs) and regenerated
@@ -83,13 +85,8 @@ Before opening the chat, SensAI checks that Ollama answers and that the model is
 | Embedding model missing | Warning only: long-term memory (RAG) is disabled | — |
 
 The same messages are shown if Ollama stops or times out during a conversation; the session keeps running.
-./scripts/A1Libi -setup   # prépare le projet
-./scripts/A1Libi -run     # lance tout
-```
 
-Ouvrez ensuite **http://localhost:7860**.
-
-> Le premier lancement télécharge les modèles d'IA : il peut prendre plusieurs minutes.
+> The first launch downloads the AI models and can take several minutes.
 
 ---
 
