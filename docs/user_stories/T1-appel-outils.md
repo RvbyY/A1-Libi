@@ -2,7 +2,7 @@
 
 [Retour aux user stories](README.md)
 
-**Statut :** Partiel (l'appel d'outils fonctionne de bout en bout, mais SensAI n'a pas de client MCP pour brancher un outil MCP existant)
+**Statut :** Fait, avec une limite (l'appel d'outils fonctionne de bout en bout, mais SensAI n'a pas de client MCP pour brancher un outil MCP existant)
 
 ---
 

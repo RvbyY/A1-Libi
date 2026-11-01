@@ -1,6 +1,7 @@
 # Feature checklist
 
-Une case est cochée seulement si SensAI remplit toute la description de la feature.
+Une case est cochée quand le cœur de la feature est implémenté et vérifié par des tests.
+Quand une partie de la description manque encore, la ligne « Statut SensAI » commence par « Fait, avec une limite ».
 Sous chaque feature, la ligne « Statut SensAI » indique ce qui est fait et renvoie vers la fiche de preuves
 (code, tests à relancer, démonstration manuelle) et les user stories.
 
@@ -38,14 +39,14 @@ Real-world examples: Claude maintaining a specification document updated with ea
 maintaining a codebase summary during a development session. A writing assistant building an article
 section by section
   - Statut SensAI : non implémenté.
-- [ ] [T1] MCP
+- [x] [T1] MCP
   - The model decides mid-generation to call an external function instead of answering: it emits a structured
 request (tool name + arguments), your code executes it, returns the result, and the model continues with
 it.
 Real-world examples: Claude deciding to use its calculator when you ask a math question. A booking
 agent calling a calendar API to check availability
 This will be tested with both your own and a preexisting MCP tool.
-  - Statut SensAI : Partiel. L'appel d'outils fonctionne de bout en bout (requête structurée, exécution, résultat renvoyé au modèle, relance). Il manque un client MCP pour brancher un outil MCP existant, ce que demande le test. Preuves et user stories : [T1-appel-outils.md](T1-appel-outils.md).
+  - Statut SensAI : Fait, avec une limite. L'appel d'outils fonctionne de bout en bout (requête structurée, exécution, résultat renvoyé au modèle, relance). Il manque un client MCP pour brancher un outil MCP existant, ce que demande le test. Preuves et user stories : [T1-appel-outils.md](T1-appel-outils.md).
 - [ ] [T2] Sandboxed Code Execution
   - Give the agent a sandboxed runtime (Docker or isolated subprocess) where it runs code it generated, captures stdout and tracebacks, and feeds them back to fix its own errors.
 Real-world examples: ChatGPT Code Interpreter executing Python to analyze a CSV. Devin generating,
@@ -146,10 +147,10 @@ Real-world examples: Langfuse, LangSmith, Helicone — all LLM observability too
 Real-world examples: Anthropic, OpenAI, and Google red teams testing their models before deployment.
 Public adversarial benchmarks (AdvBench, HarmBench)
   - Statut SensAI : non implémenté.
-- [ ] [X1] Web UI
+- [x] [X1] Web UI
   - A decoupled web frontend over the CLI backend: message input, streaming conversation display, live
 token/context usage, basic agent switching, configuration... The backend logic stays unchanged.
-  - Statut SensAI : Partiel. Frontend Gradio découplé, réponse en streaming, configuration du pipeline. Il manque le changement d'agent et l'affichage des tokens consommés. Preuves et user stories : [X1-interface-web.md](X1-interface-web.md).
+  - Statut SensAI : Fait, avec une limite. Frontend Gradio découplé, réponse en streaming, configuration du pipeline. Il manque le changement d'agent et l'affichage des tokens consommés. Preuves et user stories : [X1-interface-web.md](X1-interface-web.md).
 - [ ] [X2] Branching - Resume & Interrupt
   - Resume: edit a past message and fork an alternative branch, preserving the original history.
 Interrupt: abort a generation mid-stream and redirect it with new instructions without waiting for it to

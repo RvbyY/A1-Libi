@@ -42,12 +42,12 @@ Pour relancer tous les tests du projet :
 | [Socle MVP](B1-socle-mvp.md) | Chatbot CLI, streaming, historique, erreurs, choix du modèle | Fait |
 | [M1 : Persistance et profils](M1-persistance-profils.md) | Mémoire et contexte | Fait |
 | [R1 : RAG basique](R1-rag-basique.md) | RAG | Partiel |
-| [T1 : Appel d'outils](T1-appel-outils.md) | Outils et exécution | Partiel |
+| [T1 : Appel d'outils](T1-appel-outils.md) | Outils et exécution | Fait, avec une limite |
 | [A3 : Human-in-the-loop](A3-human-in-the-loop.md) | Orchestration | Fait (CLI) |
 | [EV1 : Évaluation automatique](EV1-evaluation-automatique.md) | Évaluation et sécurité | Partiel |
 | [EV2 : Guardrails](EV2-guardrails.md) | Évaluation et sécurité | Partiel |
 | [EV3 : Monitoring](EV3-monitoring.md) | Évaluation et sécurité | Partiel |
-| [X1 : Interface web](X1-interface-web.md) | Expérience utilisateur | Partiel |
+| [X1 : Interface web](X1-interface-web.md) | Expérience utilisateur | Fait, avec une limite |
 | [X5 : Planification](X5-planification.md) | Expérience utilisateur | Partiel |
 
 ---

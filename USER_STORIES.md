@@ -30,7 +30,7 @@ Statut : Partiel (RAG sur les conversations, pas encore sur des documents). [Fic
 
 ## T1 : Appel d'outils (function calling)
 
-Statut : Partiel (l'appel d'outils fonctionne de bout en bout, mais SensAI n'a pas de client MCP pour brancher un outil MCP existant). [Fiche détaillée](docs/user_stories/T1-appel-outils.md)
+Statut : Fait, avec une limite (l'appel d'outils fonctionne de bout en bout, mais SensAI n'a pas de client MCP pour brancher un outil MCP existant). [Fiche détaillée](docs/user_stories/T1-appel-outils.md)
 
 - **Faire agir l'assistant** : En tant qu'utilisateur, je veux demander en langage naturel une action comme « ajoute une réunion demain à 10h », afin que l'assistant appelle le bon outil et me confirme le résultat.
 - **Voir ce que fait l'assistant** : En tant qu'utilisateur du terminal, je veux voir chaque outil appelé avec ses arguments, son statut et sa durée, afin de savoir exactement quelles actions ont été faites en mon nom.
@@ -66,7 +66,7 @@ Statut : Partiel (visualiseur temps réel et logs ; pas encore de tableau de mé
 
 ## X1 : Interface web
 
-Statut : Partiel (interface web complète, mais pas de changement d'agent ni d'affichage des tokens consommés). [Fiche détaillée](docs/user_stories/X1-interface-web.md)
+Statut : Fait, avec une limite (pas de changement d'agent ni d'affichage des tokens consommés). [Fiche détaillée](docs/user_stories/X1-interface-web.md)
 
 - **Discuter dans le navigateur** : En tant qu'utilisateur qui n'aime pas le terminal, je veux discuter avec l'assistant dans mon navigateur, afin d'utiliser SensAI sans ligne de commande.
 - **Gérer plusieurs conversations** : En tant qu'utilisateur, je veux créer de nouvelles conversations et rouvrir les anciennes depuis une barre latérale, afin de séparer mes sujets sans perdre mon historique.

@@ -2,7 +2,7 @@
 
 [Retour aux user stories](README.md)
 
-**Statut :** Partiel (interface web complète, mais pas de changement d'agent ni d'affichage des tokens consommés)
+**Statut :** Fait, avec une limite (pas de changement d'agent ni d'affichage des tokens consommés)
 
 ---
 
