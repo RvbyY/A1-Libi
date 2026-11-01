@@ -1,23 +1,23 @@
-# 🏗️ 2. Architecture
+# 2. Architecture
 
 Cette page montre comment le projet est **organisé**.
 
-[⬅️ Retour au sommaire](README.md)
+[Retour au sommaire](README.md)
 
 ---
 
-## 🧩 Les 4 grandes parties
+## Les 4 grandes parties
 
 | Partie | Dossier | Rôle |
 |--------|---------|------|
-| 🎮 **SensAI** | `src/main.py` | Le chef d'orchestre. Il relie tout. |
-| 🎁 **Wrapper** | `src/galerelm/wrapper.py` | Des fonctions simples pour l'interface Gradio. |
-| 🗃️ **galerelm** | `src/galerelm/models/` | Les données : profils, messages, mémoire. |
-| 🌐 **rapideAPI** | `src/rapideAPI/` | Le client qui parle à Ollama. |
+| **SensAI** | `src/main.py` | Le chef d'orchestre. Il relie tout. |
+| **Wrapper** | `src/galerelm/wrapper.py` | Des fonctions simples pour l'interface Gradio. |
+| **galerelm** | `src/galerelm/models/` | Les données : profils, messages, mémoire. |
+| **rapideAPI** | `src/rapideAPI/` | Le client qui parle à Ollama. |
 
 ---
 
-## 🔗 Qui parle à qui
+## Qui parle à qui
 
 ```mermaid
 flowchart TD
@@ -44,7 +44,7 @@ flowchart TD
 
 ---
 
-## 📁 Les fichiers importants
+## Les fichiers importants
 
 ```
 SensAI/
@@ -80,7 +80,7 @@ SensAI/
 
 ---
 
-## 🔄 Le trajet d'un message
+## Le trajet d'un message
 
 Voici ce qui se passe quand vous envoyez un message.
 
@@ -114,7 +114,7 @@ En étapes :
 
 ---
 
-## 🧱 Les choix techniques
+## Les choix techniques
 
 | Choix | Pourquoi |
 |-------|----------|
@@ -127,4 +127,4 @@ En étapes :
 
 ---
 
-[⬅️ Page précédente : Démarrage](01-demarrage.md) · [➡️ Page suivante : Mémoire](03-memoire.md)
+[Page précédente : Démarrage](01-demarrage.md) · [Page suivante : Mémoire](03-memoire.md)

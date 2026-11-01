@@ -95,5 +95,7 @@ def test_empty_from_format():
 
 def test_from_format_empty_dict():
     assert Message.from_format({}).role == "user"
-    assert Options.from_format({}).seed == 0
+    # Champs absents : valeurs du profil "chat" de la config (pas de graine fixe par défaut)
+    assert Options.from_format({}).seed is None
+    assert Options.from_format({}).temperature == 0.7
     assert ChatResponse.from_format({}).model == ""

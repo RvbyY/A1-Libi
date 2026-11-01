@@ -1,4 +1,4 @@
-# ✅ Check-list : implémenter un tool
+# Check-list : implémenter un tool
 
 À dérouler pour **chaque** nouveau tool (ou modification d'un tool existant) avant d'ouvrir la PR.
 Exemple de référence : [`tasks/complete_task.py`](tasks/complete_task.py).
@@ -16,8 +16,9 @@ Architecture détaillée : [docs/12](../../docs/12-architecture-context-tools.md
 
 ## 2. Définition vue par le LLM
 
-Ces trois propriétés sont envoyées à Ollama (`tools`) **et** résumées dans le prompt système sous forme de signature
-(`- nom(param*: a|b, autre: integer) — description`). Le modèle n'a rien d'autre pour décider d'appeler le tool.
+Ces trois propriétés sont envoyées à Ollama (champ `tools`, schéma JSON complet). Le prompt système liste aussi
+le nom des outils (réglage `prompt.tools_listing`, voir docs/17-ameliorations-mesurees.md). Le modèle n'a rien
+d'autre pour décider d'appeler le tool.
 
 - [ ] `name` est unique dans le registre, en `snake_case` et sous forme de verbe ou de domaine (`create_task`, `calendar`). Un doublon écrase silencieusement l'autre tool dans `ToolRegistry`.
 - [ ] `description` tient en une phrase et dit **quoi** fait le tool et **quand** l'utiliser. Elle mentionne les effets de bord (envoi, suppression, etc.).

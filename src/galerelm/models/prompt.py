@@ -7,6 +7,7 @@ import logging
 from string import Formatter
 from typing import Any, Iterable, Optional, Union
 
+from src.config import config
 from src.galerelm.models.message import Message
 
 logger = logging.getLogger("galerelm.models.prompt")
@@ -111,6 +112,11 @@ TOOLS_USAGE_RULES = [
     "Les paramètres marqués * sont obligatoires : s'il en manque un, demande-le à l'utilisateur au lieu de l'inventer.",
     "N'invente jamais le résultat d'un outil : base ta réponse uniquement sur ce qu'il renvoie.",
 ]
+
+# Variante de la 3e règle quand les signatures ne sont pas affichées (modes "names" et "none")
+TOOLS_REQUIRED_RULE_WITHOUT_SIGNATURES = (
+    "S'il manque un paramètre obligatoire d'un outil, demande-le à l'utilisateur au lieu de l'inventer."
+)
 
 HALLUCINATION_GRADER_TEMPLATE = """
 Tu es un vérificateur factuel strict (Anti-Hallucination Grader).
@@ -293,6 +299,8 @@ class PromptBuilder:
         self._extra_rules: list[str] = []
         self._memory_lines: list[str] = []
         self._tool_lines: list[str] = []
+        self._tool_names: list[str] = []
+        self._tools_listing: Optional[str] = None
         self._variables: dict[str, Any] = {}
         self._user_query: Optional[str] = None
 
@@ -375,10 +383,13 @@ class PromptBuilder:
 
         return self
 
-    def with_tools(self, tools: Any) -> "PromptBuilder":
+    def with_tools(self, tools: Any, listing: Optional[str] = None) -> "PromptBuilder":
         """
         Injecte un résumé des outils disponibles (compatible ToolRegistry, ToolsList ou list[dict]).
+        listing : "full", "names" ou "none" ; par défaut, config.TOOLS_LISTING.
         """
+        if listing is not None:
+            self._tools_listing = listing
         if tools is None:
             return self
 
@@ -394,6 +405,7 @@ class PromptBuilder:
             func = tool_def.get("function", tool_def) if isinstance(tool_def, dict) else {}
             if func.get("name"):
                 self._tool_lines.append(self._format_tool_line(func))
+                self._tool_names.append(func["name"])
 
         return self
 
@@ -446,6 +458,19 @@ class PromptBuilder:
 
         return PromptTemplate.default_system(persona=self._persona).render(**context_vars)
 
+    def _render_tools_block(self) -> str:
+        """Bloc des outils selon le mode de description (config.TOOLS_LISTING ou with_tools(listing=...))."""
+        mode = self._tools_listing or config.TOOLS_LISTING
+        rules = list(TOOLS_USAGE_RULES)
+        if mode != "full":
+            rules[2] = TOOLS_REQUIRED_RULE_WITHOUT_SIGNATURES
+        usage = "Utilisation des outils :\n" + "\n".join(f"- {r}" for r in rules)
+        if mode == "full":
+            return "Outils disponibles :\n" + "\n".join(self._tool_lines) + "\n\n" + usage
+        if mode == "names":
+            return "Outils disponibles : " + ", ".join(self._tool_names) + "\n\n" + usage
+        return usage
+
     def build(self) -> Prompt:
         """Construit et retourne l'objet Prompt final."""
         sections: list[str] = []
@@ -468,13 +493,7 @@ class PromptBuilder:
             sections.append(rules_block)
 
         if self._tool_lines:
-            tools_block = (
-                "Outils disponibles :\n"
-                + "\n".join(self._tool_lines)
-                + "\n\nUtilisation des outils :\n"
-                + "\n".join(f"- {r}" for r in TOOLS_USAGE_RULES)
-            )
-            sections.append(tools_block)
+            sections.append(self._render_tools_block())
 
 
         system_content = "\n\n".join(sections)

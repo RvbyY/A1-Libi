@@ -1,14 +1,14 @@
-# 🖥️ 6. L'application web
+# 6. L'application web
 
 Cette page décrit l'interface d'A1Libi **dans le navigateur**.
 
 Elle est faite avec **Gradio**.
 
-[⬅️ Retour au sommaire](README.md)
+[Retour au sommaire](README.md)
 
 ---
 
-## ▶️ Lancer
+## Lancer
 
 1. Lancez le backend (Ollama) :
 
@@ -37,7 +37,7 @@ Voir [Infrastructure](12-infrastructure.md).
 
 ---
 
-## 👀 Ce que voit l'utilisateur
+## Ce que voit l'utilisateur
 
 ### 1. La page de connexion
 
@@ -75,7 +75,7 @@ Elle s'affiche après la connexion.
 
 ---
 
-## 📁 Les fichiers
+## Les fichiers
 
 Dossier : `src/webapp/`
 
@@ -89,7 +89,7 @@ Le script de lancement : [`scripts/A1Libi_dev`](../scripts/A1Libi_dev) (option `
 
 ---
 
-## 🧩 Comment c'est organisé
+## Comment c'est organisé
 
 ### Une seule page, deux écrans
 
@@ -99,8 +99,8 @@ Elle contient deux blocs `gr.Column` :
 
 | Bloc | Visible au départ |
 |------|-------------------|
-| `login_page` | ✅ oui |
-| `chat_page` | ❌ non |
+| `login_page` | oui |
+| `chat_page` | non |
 
 Pour changer d'écran, une fonction renvoie `gr.Column(visible=True)` ou `gr.Column(visible=False)`.
 
@@ -135,7 +135,7 @@ bouton.click(fonction, inputs=[...], outputs=[...])
 
 ---
 
-## ➕ Ajouter quelque chose
+## Ajouter quelque chose
 
 1. Créez le composant dans une méthode de `Views` (`views.py`).
 2. Renvoyez-le avec `return`.
@@ -147,4 +147,4 @@ bouton.click(fonction, inputs=[...], outputs=[...])
 
 ---
 
-[⬅️ Page précédente : Wrapper](05-wrapper.md) · [➡️ Page suivante : Terminal](07-terminal.md)
+[Page précédente : Wrapper](05-wrapper.md) · [Page suivante : Terminal](07-terminal.md)

@@ -1,12 +1,12 @@
-# 🐳 12. Infrastructure
+# 12. Infrastructure
 
 Cette page explique comment **installer** et **lancer** A1Libi avec les scripts.
 
-[⬅️ Retour au sommaire](README.md)
+[Retour au sommaire](README.md)
 
 ---
 
-## 🧰 Les fichiers
+## Les fichiers
 
 | Fichier | Rôle |
 |---------|------|
@@ -22,7 +22,7 @@ Ils se placent tout seuls à la racine du projet.
 
 ---
 
-## 🤔 Quel script choisir ?
+## Quel script choisir ?
 
 | | `A1Libi` | `A1Libi_dev` |
 |---|---|---|
@@ -34,7 +34,7 @@ Ils se placent tout seuls à la racine du projet.
 
 ---
 
-## 🐳 `A1Libi` : avec Docker
+## `A1Libi` : avec Docker
 
 ### Étapes
 
@@ -89,7 +89,7 @@ Ils ne sont pas téléchargés à chaque lancement.
 
 ---
 
-## 🛠️ `A1Libi_dev` : sans Docker
+## `A1Libi_dev` : sans Docker
 
 Il faut **deux terminaux**.
 
@@ -137,7 +137,7 @@ Il faut **deux terminaux**.
 
 ---
 
-## ⚙️ Le fichier `.env`
+## Le fichier `.env`
 
 - Les deux scripts lisent le fichier `.env`.
 - Il est à la **racine** du projet.
@@ -150,7 +150,7 @@ Il faut **deux terminaux**.
 
 ---
 
-## 🎨 Les couleurs des messages
+## Les couleurs des messages
 
 `A1Libi` affiche ses messages en **couleur**.
 
@@ -190,4 +190,4 @@ Exemple : `./scripts/A1Libi -setup > log.txt`.
 
 ---
 
-[⬅️ Page précédente : Classification d'intention](11-intent-classifier.md) · [🏠 Retour au sommaire](README.md)
+[Page précédente : Classification d'intention](11-intent-classifier.md) · [Retour au sommaire](README.md)

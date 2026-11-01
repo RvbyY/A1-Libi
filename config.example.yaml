@@ -9,10 +9,37 @@ ollama:
   model: llama3.2
   embed_model: nomic-embed-text
   timeout: 120          # secondes
+  keep_alive: "30m"     # durée de maintien du modèle en mémoire ("1h", "-1" = toujours)
 
 database:
   url: sqlite:///galerelm.db
 
+prompt:
+  # Description des outils dans le prompt système : names (défaut, mesuré), full (signatures) ou none
+  tools_listing: names
+
 memory:
   context_limit: 10         # messages gardés en mémoire courte avant archivage
   deep_context_limit: 4096  # entrées vectorielles max en mémoire long terme
+
+# Paramètres de génération envoyés à Ollama, un profil par usage.
+# Détail de chaque paramètre et des valeurs choisies : docs/15-parametres-generation.md
+generation:
+  chat:                 # la conversation
+    temperature: 0.7    # 0.0 (déterministe) à 2.0
+    top_k: 40
+    top_p: 0.9
+    min_p: 0.05
+    num_ctx: 8192       # fenêtre de contexte, en tokens (voir docs/16-benchmark-ressources.md)
+    num_predict: -1     # -1 = pas de limite de longueur
+    seed: null          # null = aléatoire ; un entier rend les réponses reproductibles
+    stop: []
+  judge:                # le juge anti-hallucination (--anti-hallucination)
+    temperature: 0.0
+    top_k: 1
+    num_predict: 160
+  guardrail:            # le classifieur d'intention
+    temperature: 0.0
+    top_k: 1
+    num_ctx: 2048
+    num_predict: 128

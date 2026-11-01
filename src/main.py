@@ -196,6 +196,20 @@ def parse_args(argv: Optional[list[str]] = None) -> argparse.Namespace:
         "--max-retries", type=int, metavar="N",
         help="Nombre max de régénérations anti-hallucination (défaut : 2). Requiert --anti-hallucination.",
     )
+    generation = parser.add_argument_group(
+        "paramètres de génération",
+        "Réglages du profil 'chat' (voir docs/15-parametres-generation.md). Ils priment sur config.yaml.",
+    )
+    generation.add_argument("--temperature", type=float, help="Créativité, de 0.0 (déterministe) à 2.0.")
+    generation.add_argument("--top-k", type=int, help="Nombre de tokens candidats gardés à chaque étape.")
+    generation.add_argument("--top-p", type=float, help="Probabilité cumulée gardée (nucleus sampling), de 0 à 1.")
+    generation.add_argument("--min-p", type=float, help="Probabilité minimale d'un token, relative au plus probable.")
+    generation.add_argument("--num-ctx", type=int, help="Taille de la fenêtre de contexte, en tokens.")
+    generation.add_argument("--num-predict", type=int, help="Nombre max de tokens générés (-1 = pas de limite).")
+    generation.add_argument("--seed", help="Graine aléatoire pour des réponses reproductibles ('none' = aléatoire).")
+    parser.add_argument("--tools-listing", choices=["full", "names", "none"],
+                        help="Description des outils dans le prompt système (voir docs/17-ameliorations-mesurees.md).")
+    generation.add_argument("--keep-alive", help="Durée de maintien du modèle en mémoire ('30m', '1h', '-1' = toujours).")
     args = parser.parse_args(argv)
 
     if args.max_retries is not None:
@@ -218,7 +232,21 @@ def load_config(args: argparse.Namespace) -> None:
         OLLAMA_HOST=args.host,
         EMBED_MODEL=args.embed_model,
         DB_URL=args.db,
+        KEEP_ALIVE=args.keep_alive,
+        TOOLS_LISTING=args.tools_listing,
     )
+    config.apply_generation_overrides(
+        "chat",
+        temperature=args.temperature,
+        top_k=args.top_k,
+        top_p=args.top_p,
+        min_p=args.min_p,
+        num_ctx=args.num_ctx,
+        num_predict=args.num_predict,
+        seed=args.seed,
+    )
+    # Référence pour "/params reset"
+    config.mark_startup_generation()
 
 
 def main(argv: Optional[list[str]] = None) -> int:

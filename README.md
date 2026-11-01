@@ -63,6 +63,33 @@ docker compose run --rm app python src/main.py --model qwen2.5:7b
 
 Run `docker compose run --rm app python src/main.py --help` for every option.
 
+### Generation parameters
+
+Temperature, context size, maximum length, seed, stop sequences and `keep_alive` are configurable
+per profile (`chat`, `judge`, `guardrail`) in `config.yaml`, with CLI flags (`--temperature`, `--num-ctx`,
+`--num-predict`, `--seed`, `--keep-alive`…) or live with `/params` in the chat.
+Values, validation rules and the reasons behind the defaults: [docs/15-parametres-generation.md](docs/15-parametres-generation.md).
+
+### Local resource benchmark
+
+Speed, latency and memory of the model on the local machine (GPU vs CPU, context sizes, cold start,
+thinking, embeddings), with a reproducible protocol and the measured results:
+[docs/16-benchmark-ressources.md](docs/16-benchmark-ressources.md).
+
+```bash
+PYTHONPATH=. .venv/bin/python -m benchmark.resources
+```
+
+### Measured improvements
+
+Each improvement (re-prompting after tools, cross-chat memory, tool listing in the prompt) is compared to its
+baseline on a fixed reference set, with the results and decisions in
+[docs/17-ameliorations-mesurees.md](docs/17-ameliorations-mesurees.md).
+
+```bash
+PYTHONPATH=. .venv/bin/python -m benchmark.quality --reps 3
+```
+
 ### Anti-hallucination loop
 
 ```bash

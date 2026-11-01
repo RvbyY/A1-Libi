@@ -1,0 +1,1 @@
+[![Architecture diagram of rvbyy/sensai](https://gitdiagram.com/rvbyy/sensai/diagram.png)](https://gitdiagram.com/rvbyy/sensai?utm_source=readme&utm_medium=picture)
