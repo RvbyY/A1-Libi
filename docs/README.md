@@ -47,6 +47,7 @@ Lisez les pages dans l'ordre si vous découvrez le projet.
 | 10 | [Problèmes connus](10-problemes-connus.md) | Ce qui reste à corriger |
 | 11 | [Classification d'intention](11-intent-classifier.md) | Le filtre qui bloque les demandes dangereuses |
 | 12 | [Infrastructure](12-infrastructure.md) | Les scripts, Docker et le fichier `.env` |
+| 15 | [Paramètres de génération](15-parametres-generation.md) | Les réglages envoyés au modèle, où les changer et pourquoi |
 
 ---
 

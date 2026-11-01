@@ -92,6 +92,17 @@ Le style est celui d'un **terminal de hacker** : écriture verte.
 | `/memories` | Affiche la mémoire longue |
 | `/payload` | Affiche le JSON exact envoyé à l'IA |
 
+### Paramètres de génération
+
+| Commande | Effet |
+|----------|-------|
+| `/params` | Affiche les paramètres des profils `chat`, `judge`, `guardrail` |
+| `/params temperature 0.2` | Change un paramètre du profil `chat` |
+| `/params judge.num_predict 200` | Change un paramètre d'un autre profil |
+| `/params reset` | Revient aux valeurs du démarrage |
+
+Détails : [Paramètres de génération](15-parametres-generation.md).
+
 ### Mémoire longue
 
 | Commande | Effet |

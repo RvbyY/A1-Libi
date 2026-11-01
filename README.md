@@ -63,6 +63,13 @@ docker compose run --rm app python src/main.py --model qwen2.5:7b
 
 Run `docker compose run --rm app python src/main.py --help` for every option.
 
+### Generation parameters
+
+Temperature, context size, maximum length, seed, stop sequences and `keep_alive` are configurable
+per profile (`chat`, `judge`, `guardrail`) in `config.yaml`, with CLI flags (`--temperature`, `--num-ctx`,
+`--num-predict`, `--seed`, `--keep-alive`…) or live with `/params` in the chat.
+Values, validation rules and the reasons behind the defaults: [docs/15-parametres-generation.md](docs/15-parametres-generation.md).
+
 ### Anti-hallucination loop
 
 ```bash

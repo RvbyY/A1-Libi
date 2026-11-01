@@ -152,16 +152,21 @@ Fichier : `options.py`
 
 Les réglages de l'IA.
 
-| Réglage | Défaut | Effet |
-|---------|--------|-------|
-| `temperature` | 0.7 | Plus haut = plus créatif |
-| `top_k` | 40 | Nombre de mots candidats |
-| `top_p` | 0.9 | Filtre les mots peu probables |
-| `min_p` | 0.05 | Probabilité minimum d'un mot |
-| `seed` | 0 | Graine du hasard |
-| `num_ctx` | 4096 | Taille de la fenêtre de lecture |
-| `num_predict` | 512 | Longueur max de la réponse |
-| `stop` | `["\nuser:", "</s>"]` | Mots qui arrêtent la réponse |
+Les valeurs ne sont plus écrites dans cette classe.
+Un paramètre non fourni prend la valeur du **profil** de la config (`chat`, `judge` ou `guardrail`).
+
+| Réglage | Effet |
+|---------|-------|
+| `temperature` | Plus haut = plus créatif |
+| `top_k` | Nombre de mots candidats |
+| `top_p` | Filtre les mots peu probables |
+| `min_p` | Probabilité minimum d'un mot |
+| `seed` | Graine du hasard (absente = aléatoire) |
+| `num_ctx` | Taille de la fenêtre de lecture |
+| `num_predict` | Longueur max de la réponse (-1 = pas de limite) |
+| `stop` | Textes qui arrêtent la réponse |
+
+Valeurs par défaut, réglages et justifications : [Paramètres de génération](15-parametres-generation.md).
 
 ---
 
