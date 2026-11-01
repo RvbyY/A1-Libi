@@ -3,12 +3,20 @@ Module engine.py
 Orchestrateur central (ChatEngine) gérant le cycle complet d'un tour de conversation :
 Message Utilisateur -> Guardrail -> Prompt (RAG + Tools) -> LLM Stream / Graphe Anti-Hallucination -> ToolExecutor -> Persistance.
 """
+import json
 import logging
-from typing import Any, Callable, Generator, Optional
+import time
+from typing import TYPE_CHECKING, Any, Callable, Generator, Optional
+
+from sqlalchemy.orm import object_session
 
 from src.config import config
 from src.galerelm.graph import AntiHallucinationWorkflow, HallucinationGrader
 from src.galerelm.intent_classifier import IntentGuardrail
+from src.galerelm.documents import DocumentStore
+from src.galerelm.models.interaction_log import TEXT_PREVIEW, InteractionLog
+from src.galerelm.output_guardrail import OutputGuardrail
+from src.galerelm.prompt_simplifier import replace_last_user_message, simplify
 from src.galerelm.models import (
     Chat,
     ChatResponse,
@@ -20,7 +28,10 @@ from src.galerelm.models import (
     ToolsList,
 )
 from src.rapideAPI.client import RapideAPI
-from src.tools.registry import ToolExecutor, ToolRegistry
+
+if TYPE_CHECKING:
+    # Import seulement pour les annotations : src.tools importe src.galerelm, un import réel serait circulaire.
+    from src.tools.registry import ToolExecutor, ToolRegistry
 
 logger = logging.getLogger("galerelm.engine")
 
@@ -36,7 +47,7 @@ class ChatEngine:
         self,
         api: RapideAPI,
         model: str = None,
-        tool_registry: Optional[ToolRegistry] = None,
+        tool_registry: Optional["ToolRegistry"] = None,
         guardrail: Optional[IntentGuardrail] = None,
         hallucination_grader: Optional[HallucinationGrader] = None,
         max_hallucination_retries: int = 2,
@@ -46,11 +57,24 @@ class ChatEngine:
         confirm_tool: Optional[Callable[[str, dict], bool]] = None,
         on_tool_call: Optional[Callable[[str, dict, Any, float], None]] = None,
         max_tool_rounds: int = 3,
+        simplify_prompt: bool = True,
+        output_guardrail: Optional[OutputGuardrail] = None,
     ):
         self.api = api
+        # Filtre de sortie (EV2) : données personnelles anonymisées ou réponse refusée, à l'affichage et en base
+        self.output_guardrail = output_guardrail
+        # Persona actif (A5) : nom, ton et instructions de l'agent ; modifiable en cours de session
+        self.persona: Optional[dict] = None
+        # Documents ingérés (R1) : recherche des extraits pertinents pour chaque question
+        self.documents = DocumentStore()
+        # Allège le message (tics, politesse...) avant Guardrail et LLM ; l'historique garde l'original
+        self.simplify_prompt = simplify_prompt
+        self.last_clean_prompt: Optional[str] = None
         # Nombre max de relances du modèle après exécution d'outils (évite les boucles d'appels infinies)
         self.max_tool_rounds = max_tool_rounds
         self.last_tool_outputs: list[str] = []
+        # Outils appelés pendant l'échange en cours (nom, succès), pour le journal (EV3)
+        self._turn_tools: list[tuple[str, bool]] = []
         # Demande à l'utilisateur d'autoriser un outil sensible (email, discord...) ; None = toujours refuser
         self.confirm_tool = confirm_tool
         # Reçoit (nom, arguments, ToolResult, durée ms) après chaque appel d'outil (logs CLI)
@@ -66,6 +90,8 @@ class ChatEngine:
         self.on_event = on_event
         self.last_response: Optional[ChatResponse] = None
         self.last_graph_state: Optional[dict[str, Any]] = None
+        # Dernier verdict du juge (EV1), en mode anti-hallucination
+        self.last_grade = None
         self.last_built_prompt: Optional[Prompt] = None
 
     def _emit(self, node_id: str, state: str, detail: str = "") -> None:
@@ -78,15 +104,24 @@ class ChatEngine:
 
     def _notify_tool_call(self, name: str, arguments: dict, result: Any, duration_ms: float) -> None:
         """Relaie chaque appel d'outil à l'observateur courant (il peut être défini après la création)."""
+        self._turn_tools.append((name, bool(getattr(result, "success", False))))
         if self.on_tool_call is not None:
             self.on_tool_call(name, arguments, result, duration_ms)
 
-    def _new_executor(self, registry: Optional[ToolRegistry]) -> Optional[ToolExecutor]:
+    def _new_executor(self, registry: Optional["ToolRegistry"]) -> Optional["ToolExecutor"]:
         if not registry:
             return None
+        from src.tools.registry import ToolExecutor
+
         return ToolExecutor(registry, confirm=self._confirm_tool, on_call=self._notify_tool_call)
 
-    def set_tool_registry(self, registry: Optional[ToolRegistry]) -> None:
+    def set_persona(self, key: Optional[str]) -> dict:
+        """Change l'agent pour les prochains messages. L'historique de la conversation est gardé."""
+        self.persona = config.persona(key)
+        self._emit("prompt", "success", f"Persona : {self.persona['name']}")
+        return self.persona
+
+    def set_tool_registry(self, registry: Optional["ToolRegistry"]) -> None:
         self.tool_registry = registry
         self.tool_executor = self._new_executor(registry)
 
@@ -106,18 +141,38 @@ class ChatEngine:
         if not profile:
             return Prompt(system_content="", user_content=query)
 
-        builder = PromptBuilder().with_profile(profile).with_user_query(query)
+        builder = PromptBuilder().with_profile(profile).with_agent(self.persona).with_user_query(query)
         if self.tool_registry:
             builder.with_tools(self.tool_registry)
         if query:
             self._emit("retrieve", "active", f"Recherche RAG top-{self.rag_top_k}")
             builder.with_rag(profile, query, self.api, top_k=self.rag_top_k)
-            self._emit("retrieve", "success", "Contexte vectoriel extrait")
+            documents = self.search_documents(profile, query)
+            builder.with_documents(documents)
+            self._emit("retrieve", "success", f"Contexte vectoriel extrait ({len(documents)} extrait(s) de documents)")
         self._emit("prompt", "active", "Assemblage PromptBuilder")
         built = builder.build()
         self.last_built_prompt = built
         self._emit("prompt", "success", f"Prompt prêt ({len(built.system_content)} car.)")
         return built
+
+    def _llm_messages(self, context: Context):
+        """Copie de l'historique où le dernier message utilisateur est remplacé par sa version simplifiée."""
+        messages = context.get_messages_copy()
+        if self.last_clean_prompt is not None:
+            replace_last_user_message(messages, self.last_clean_prompt)
+        return messages
+
+    def search_documents(self, profile: Optional[Profile], query: str) -> list:
+        """Extraits des documents ingérés par le profil (R1), les plus proches de la question."""
+        session = object_session(profile) if profile is not None else None
+        if session is None or not query:
+            return []
+        try:
+            return self.documents.search(session, profile.id, query, api_client=self.api, top_k=self.rag_top_k)
+        except Exception as exc:
+            logger.warning(f"[ChatEngine] Recherche dans les documents échouée : {exc}")
+            return []
 
     def _get_tools_list(self) -> ToolsList:
         """Convertit les outils du ToolRegistry en ToolsList via to_tools_list()."""
@@ -180,11 +235,11 @@ class ChatEngine:
         context.add(Message(role="user", content=user_prompt), api_client=self.api)
         session.commit()
 
-        built_prompt = self.build_prompt(profile, user_prompt)
+        built_prompt = self.build_prompt(profile, self.last_clean_prompt or user_prompt)
         return Chat(
             model=self.model,
             api=self.api,
-            messages=context.get_messages_copy(),
+            messages=self._llm_messages(context),
             tools=self._get_tools_list(),
             system_prompt=built_prompt,
         )
@@ -237,9 +292,15 @@ class ChatEngine:
             return None
 
         assistant_msg = llm.last_response.message
+        content = assistant_msg.content
+        if self.output_guardrail is not None and content:
+            decision = self.output_guardrail.apply(content)
+            content = decision.text
+            if decision.found:
+                self._emit("guardrail", "warning", f"Données personnelles filtrées : {decision.found}")
         persisted_msg = Message(
             role="assistant",
-            content=assistant_msg.content,
+            content=content,
             images=assistant_msg.images,
             tool_calls=assistant_msg.tool_calls,
         )
@@ -279,9 +340,10 @@ class ChatEngine:
             on_event=self.on_event,
             confirm_tool=self._confirm_tool,
             on_tool_call=self._notify_tool_call,
+            persona=self.persona,
             max_tool_rounds=self.max_tool_rounds,
         )
-        final_state = workflow.run(session, profile, context, user_prompt)
+        final_state = workflow.run(session, profile, context, self.last_clean_prompt or user_prompt)
         self.last_graph_state = final_state
         self.last_built_prompt = final_state.get("built_prompt")
 
@@ -302,14 +364,107 @@ class ChatEngine:
         user_prompt: str,
     ) -> Generator[str, None, Optional[ChatResponse]]:
         """
+        Exécute un tour complet (voir _stream_turn_impl) et le journalise (EV3) :
+        latence, premier morceau, tokens, outils appelés, statut et erreur, dans la table interaction_logs.
+        """
+        started = time.perf_counter()
+        first_token: Optional[float] = None
+        answer: list[str] = []
+        self._turn_tools = []
+        self.last_response = None
+        self.last_built_prompt = None
+        self.last_grade = None
+        status, error = "ok", None
+        try:
+            for token in self._stream_turn_impl(session, profile, context, user_prompt):
+                if first_token is None and token:
+                    first_token = time.perf_counter() - started
+                answer.append(token)
+                yield token
+            if self.last_response is not None and self.last_response.done_reason == "guardrail":
+                status = "blocked"
+        except GeneratorExit:
+            status = "interrupted"
+            raise
+        except Exception as exc:
+            status, error = "error", str(exc)
+            raise
+        finally:
+            self._log_interaction(session, profile, context, user_prompt, "".join(answer), status, error,
+                                  time.perf_counter() - started, first_token)
+        return self.last_response
+
+    @staticmethod
+    def verification_note(grade) -> str:
+        """
+        Signale à l'utilisateur ce que le juge n'a pas pu confirmer (EV1) :
+        une réponse non vérifiée, ou les affirmations non appuyées par les sources.
+        """
+        if grade is None:
+            return ""
+        if not grade.verified:
+            return "\n\n[Vérification] Cette réponse n'a pas pu être vérifiée par le juge."
+        if not grade.grounded:
+            claims = "; ".join(grade.unsupported_claims) or grade.critique or "voir la réponse"
+            return f"\n\n[Vérification] Affirmations non appuyées par les sources : {claims}"
+        return ""
+
+    def _log_interaction(self, session, profile, context, user_prompt, answer, status, error, latency, first_token):
+        """Écrit une ligne InteractionLog. Un échec de journalisation ne doit jamais casser la conversation."""
+        response = self.last_response
+        prompt = self.last_built_prompt
+        failures = sum(1 for _, ok in self._turn_tools if not ok)
+        entry = InteractionLog(
+            profile_id=getattr(profile, "id", None),
+            context_id=getattr(context, "id", None),
+            model=self.model,
+            persona=(self.persona or {}).get("key"),
+            status=status,
+            error=error,
+            latency_s=round(latency, 3),
+            first_token_s=round(first_token, 3) if first_token is not None else None,
+            prompt_tokens=getattr(response, "prompt_eval_count", None),
+            gen_tokens=getattr(response, "eval_count", None),
+            system_prompt_chars=len(prompt.system_content) if prompt is not None else None,
+            memories_injected=getattr(prompt, "memories_injected", None),
+            documents_injected=getattr(prompt, "documents_injected", None),
+            tools=[name for name, _ in self._turn_tools],
+            tool_failures=failures,
+            user_prompt=(user_prompt or "")[:TEXT_PREVIEW],
+            answer=(answer or "")[:TEXT_PREVIEW],
+        )
+        grade = self.last_grade
+        if grade is not None:
+            entry.eval_relevance, entry.eval_coherence, entry.eval_faithfulness = (
+                grade.relevance, grade.coherence, grade.faithfulness)
+            entry.eval_grounded, entry.eval_verified = grade.grounded, grade.verified
+        logger.info("[Interaction] " + json.dumps({k: v for k, v in entry.format().items() if k not in ("id", "created_at")},
+                                                   ensure_ascii=False, default=str))
+        try:
+            session.add(entry)
+            session.commit()
+        except Exception as exc:
+            session.rollback()
+            logger.warning(f"[ChatEngine] Journalisation de l'échange impossible : {exc}")
+
+    def _stream_turn_impl(
+        self,
+        session,
+        profile: Profile,
+        context: Context,
+        user_prompt: str,
+    ) -> Generator[str, None, Optional[ChatResponse]]:
+        """
         Exécute un tour complet :
         - Vérifie d'abord IntentGuardrail.
         - Si hallucination_grader est activé, exécute le graphe de nœuds AntiHallucinationWorkflow
           et yield la réponse vérifiée.
         - Sinon, streame directement les tokens en temps réel depuis Chat.
         """
-        self._emit("input", "success", f"Message reçu ({len(user_prompt)} car.)")
-        refusal = self.check_guardrail(user_prompt)
+        self.last_clean_prompt = simplify(user_prompt) if self.simplify_prompt else None
+        clean_prompt = self.last_clean_prompt or user_prompt
+        self._emit("input", "success", f"Message reçu ({len(user_prompt)} → {len(clean_prompt)} car.)")
+        refusal = self.check_guardrail(clean_prompt)
         if refusal is not None:
             context.add(Message(role="user", content=user_prompt), api_client=self.api)
             context.add(Message(role="assistant", content=refusal), api_client=self.api)
@@ -335,8 +490,14 @@ class ChatEngine:
         if self.hallucination_grader is not None:
             state = self.run_workflow_turn(session, profile, context, user_prompt)
             answer = state.get("candidate_answer", "")
+            if answer and self.output_guardrail is not None:
+                answer = self.output_guardrail.apply(answer).text
             if answer:
                 yield answer
+            self.last_grade = state.get("grade")
+            note = self.verification_note(self.last_grade)
+            if note:
+                yield note
             return self.last_response
 
         llm = self.prepare_chat(session, profile, context, user_prompt)
@@ -344,7 +505,10 @@ class ChatEngine:
         for tool_round in range(self.max_tool_rounds + 1):
             self._emit("generate", "active", f"Streaming depuis {self.model}...")
             separator = "\n\n" if streamed_text else ""
-            for token in llm.execute_stream():
+            tokens = llm.execute_stream()
+            if self.output_guardrail is not None:
+                tokens = self.output_guardrail.filter_stream(tokens)
+            for token in tokens:
                 if separator:
                     yield separator
                     separator = ""

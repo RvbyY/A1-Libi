@@ -1,12 +1,12 @@
-# 🗃️ 4. Les modèles de données
+# 4. Les modèles de données
 
 Cette page décrit **chaque classe** du dossier `src/galerelm/models/`.
 
-[⬅️ Retour au sommaire](README.md)
+[Retour au sommaire](README.md)
 
 ---
 
-## 🧭 Vue d'ensemble
+## Vue d'ensemble
 
 ```mermaid
 erDiagram
@@ -26,7 +26,7 @@ Lecture :
 
 ---
 
-## 🧑 `Profile`
+## `Profile`
 
 Fichier : `profile.py`
 
@@ -46,7 +46,7 @@ Un utilisateur.
 
 ---
 
-## 🟢 `Context`
+## `Context`
 
 Fichier : `context.py`
 
@@ -73,7 +73,7 @@ Détails : [context.md](../src/galerelm/models/context.md)
 
 ---
 
-## 🔵 `DeepContext` et `LongTermMemory`
+## `DeepContext` et `LongTermMemory`
 
 Fichier : `deep_context.py`
 
@@ -100,7 +100,7 @@ Détails : [deep_context.md](../src/galerelm/models/deep_context.md)
 
 ---
 
-## ✉️ `Message` et `MessageList`
+## `Message` et `MessageList`
 
 Fichier : `message.py`
 
@@ -121,7 +121,7 @@ Un message de la conversation.
 
 ---
 
-## 💬 `Chat`
+## `Chat`
 
 Fichier : `chat.py`
 
@@ -146,26 +146,31 @@ Détails : [chat.md](../src/galerelm/models/chat.md)
 
 ---
 
-## ⚙️ `Options`
+## `Options`
 
 Fichier : `options.py`
 
 Les réglages de l'IA.
 
-| Réglage | Défaut | Effet |
-|---------|--------|-------|
-| `temperature` | 0.7 | Plus haut = plus créatif |
-| `top_k` | 40 | Nombre de mots candidats |
-| `top_p` | 0.9 | Filtre les mots peu probables |
-| `min_p` | 0.05 | Probabilité minimum d'un mot |
-| `seed` | 0 | Graine du hasard |
-| `num_ctx` | 4096 | Taille de la fenêtre de lecture |
-| `num_predict` | 512 | Longueur max de la réponse |
-| `stop` | `["\nuser:", "</s>"]` | Mots qui arrêtent la réponse |
+Les valeurs ne sont plus écrites dans cette classe.
+Un paramètre non fourni prend la valeur du **profil** de la config (`chat`, `judge` ou `guardrail`).
+
+| Réglage | Effet |
+|---------|-------|
+| `temperature` | Plus haut = plus créatif |
+| `top_k` | Nombre de mots candidats |
+| `top_p` | Filtre les mots peu probables |
+| `min_p` | Probabilité minimum d'un mot |
+| `seed` | Graine du hasard (absente = aléatoire) |
+| `num_ctx` | Taille de la fenêtre de lecture |
+| `num_predict` | Longueur max de la réponse (-1 = pas de limite) |
+| `stop` | Textes qui arrêtent la réponse |
+
+Valeurs par défaut, réglages et justifications : [Paramètres de génération](15-parametres-generation.md).
 
 ---
 
-## 📨 `ChatResponse`, `LogProb`, `TopLogProb`
+## `ChatResponse`, `LogProb`, `TopLogProb`
 
 Fichier : `response.py`
 
@@ -180,7 +185,7 @@ La **réponse** d'Ollama.
 
 ---
 
-## 🛠️ `Tools`, `ToolsFunction`, `ToolsList`
+## `Tools`, `ToolsFunction`, `ToolsList`
 
 Fichier : `tools.py`
 
@@ -191,7 +196,7 @@ Des **outils** que l'IA pourrait appeler.
 
 ---
 
-## 📦 `dto.py`
+## `dto.py`
 
 Les **objets de réponse** du wrapper.
 
@@ -199,7 +204,7 @@ Voir [Wrapper](05-wrapper.md).
 
 ---
 
-## 🧱 `base.py`
+## `base.py`
 
 Contient `Base`.
 
@@ -211,4 +216,4 @@ Toutes les classes sauvegardées héritent de `Base`.
 
 ---
 
-[⬅️ Page précédente : Mémoire](03-memoire.md) · [➡️ Page suivante : Wrapper](05-wrapper.md)
+[Page précédente : Mémoire](03-memoire.md) · [Page suivante : Wrapper](05-wrapper.md)

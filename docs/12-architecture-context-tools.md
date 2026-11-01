@@ -1,4 +1,4 @@
-# 🧰 12. Architecture des context tools
+# 12. Architecture des context tools
 
 Cette page explique comment les **context tools** sont organisés.
 
@@ -12,11 +12,11 @@ Exemples :
 - créer un événement ;
 - envoyer un email.
 
-[⬅️ Retour au sommaire](README.md)
+[Retour au sommaire](README.md)
 
 ---
 
-## 🎯 Le rôle d'un tool
+## Le rôle d'un tool
 
 Un tool donne à l'IA une capacité précise.
 
@@ -36,7 +36,7 @@ correspondante.
 
 ---
 
-## 🧱 Les trois objets communs
+## Les trois objets communs
 
 Le fichier [`src/tools/ITools.py`](../src/tools/ITools.py) définit les objets
 partagés par tous les tools.
@@ -105,7 +105,7 @@ Cette interface impose la même forme à tous les tools.
 
 ---
 
-## 🗂️ Le registre
+## Le registre
 
 Le fichier [`src/tools/registry.py`](../src/tools/registry.py) contient
 `ToolRegistry`.
@@ -152,7 +152,7 @@ Le registre :
 
 ---
 
-## 🔄 Trajet d'un appel
+## Trajet d'un appel
 
 ```mermaid
 sequenceDiagram
@@ -187,7 +187,7 @@ ne relance jamais les outils, pour ne pas répéter une action (un email envoyé
 
 ---
 
-## 📁 Organisation des fichiers
+## Organisation des fichiers
 
 ```text
 src/tools/
@@ -230,7 +230,7 @@ Cela permet d'ouvrir une session courte pour chaque appel.
 
 ---
 
-## ⏰ Architecture des tâches
+## Architecture des tâches
 
 Les tâches sont sauvegardées dans le modèle `ScheduledTask`.
 
@@ -258,7 +258,7 @@ Les états utilisés par le système sont notamment :
 
 ---
 
-## 🔐 Validation et isolation
+## Validation et isolation
 
 La validation se fait dans chaque tool.
 
@@ -277,7 +277,7 @@ d'environnement.
 
 ---
 
-## ⚠️ Limites actuelles
+## Limites actuelles
 
 - Le registre doit recevoir explicitement les instances des tools.
 - L'agenda est stocké en mémoire RAM.
@@ -296,5 +296,5 @@ d'environnement.
 
 ---
 
-[⬅️ Page précédente : Intent classifier](11-intent-classifier.md) ·
-[➡️ Page suivante : Utiliser les context tools](13-context-tools.md)
+[Page précédente : Intent classifier](11-intent-classifier.md) ·
+[Page suivante : Utiliser les context tools](13-context-tools.md)

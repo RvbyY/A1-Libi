@@ -10,11 +10,18 @@ class Views:
             new_btn = gr.Button("➕ Nouvelle conversation", variant="secondary")
             chats = gr.Radio(label="Historique", choices=[])
             gr.HTML("<hr style='margin:12px 0;border-color:#334155;'/><h3>⚙️ Options du Graphe</h3>")
+            use_simplifier = gr.Checkbox(label="Activer la simplification du prompt", value=True)
             use_guardrail = gr.Checkbox(label="Activer IntentGuardrail", value=True)
             use_anti_hallucination = gr.Checkbox(
                 label="Activer Boucle Anti-Hallucination (StateGraph)", value=True
             )
-        return new_btn, chats, use_guardrail, use_anti_hallucination
+            # X1 / A5 : changement d'agent en cours de session, l'historique est conservé
+            persona = gr.Dropdown(
+                label="Agent",
+                choices=utils.controller.persona_choices(),
+                value=(utils.controller.api.engine.persona or {}).get("key"),
+            )
+        return new_btn, chats, use_simplifier, use_guardrail, use_anti_hallucination, persona
 
     @staticmethod
     def connexion_page():
@@ -53,12 +60,21 @@ class Views:
                             scale=5,
                         )
                         send_btn = gr.Button("Envoyer 🚀", variant="primary", scale=1)
+                    # X1 : tokens lus et générés, remplissage de la fenêtre et de la mémoire courte, agent actif
+                    usage_md = gr.Markdown(value=utils.controller.usage_markdown("", None))
 
                 with gr.Column(scale=5):
                     with gr.Accordion("🔍 Inspecteur Temps Réel (PromptBuilder & GraphState)", open=True):
                         inspector_md = gr.Markdown(value=utils.controller.build_inspector_markdown())
 
-            new_btn, chats, use_guardrail, use_anti_hallucination = Views.sidebar()
+            # EV3 : métriques des échanges sur 7 jours, depuis le journal interaction_logs
+            with gr.Accordion("Monitoring (7 derniers jours)", open=False):
+                monitoring_btn = gr.Button("Actualiser les métriques", variant="secondary")
+                monitoring_md = gr.Markdown()
+                monitoring_table = gr.Dataframe(interactive=False)
+                monitoring_plot = gr.LinePlot(x="jour", y="latence_moyenne_s", title="Latence moyenne par jour (s)")
+
+            new_btn, chats, use_simplifier, use_guardrail, use_anti_hallucination, persona = Views.sidebar()
 
         return (
             chat_page,
@@ -70,6 +86,13 @@ class Views:
             inspector_md,
             new_btn,
             chats,
+            use_simplifier,
             use_guardrail,
             use_anti_hallucination,
+            persona,
+            usage_md,
+            monitoring_btn,
+            monitoring_md,
+            monitoring_table,
+            monitoring_plot,
         )

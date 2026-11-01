@@ -2,6 +2,9 @@ import gradio as gr
 import src.webapp.utils as utils
 from src.webapp.views import Views
 
+# Les tâches planifiées s'exécutent aussi quand seule la webapp tourne (résultat : nouveau chat du profil)
+utils.controller.api.core.start_scheduler()
+
 with gr.Blocks(title="SensAI — Visualiseur Temps Réel", fill_width=True) as frontend:
     current_email = gr.State("")
     current_chat = gr.State(None)
@@ -17,8 +20,15 @@ with gr.Blocks(title="SensAI — Visualiseur Temps Réel", fill_width=True) as f
         inspector_md,
         new_btn,
         chats,
+        use_simplifier,
         use_guardrail,
         use_anti_hallucination,
+        persona,
+        usage_md,
+        monitoring_btn,
+        monitoring_md,
+        monitoring_table,
+        monitoring_plot,
     ) = Views.main_page(current_email, current_chat)
 
     login_btn.click(
@@ -44,13 +54,27 @@ with gr.Blocks(title="SensAI — Visualiseur Temps Réel", fill_width=True) as f
     # Envoi de message ou commande avec mise à jour temps réel du graphe SVG et de l'inspecteur
     msg_input.submit(
         utils.controller.stream_message,
-        inputs=[msg_input, chatbot, current_email, current_chat, use_guardrail, use_anti_hallucination],
-        outputs=[msg_input, chatbot, graph_html, inspector_md],
+        inputs=[msg_input, chatbot, current_email, current_chat, use_simplifier, use_guardrail, use_anti_hallucination],
+        outputs=[msg_input, chatbot, graph_html, inspector_md, usage_md],
     )
     send_btn.click(
         utils.controller.stream_message,
-        inputs=[msg_input, chatbot, current_email, current_chat, use_guardrail, use_anti_hallucination],
-        outputs=[msg_input, chatbot, graph_html, inspector_md],
+        inputs=[msg_input, chatbot, current_email, current_chat, use_simplifier, use_guardrail, use_anti_hallucination],
+        outputs=[msg_input, chatbot, graph_html, inspector_md, usage_md],
+    )
+    def refresh_monitoring(email):
+        text, table = utils.controller.monitoring(email)
+        return text, table, table
+
+    monitoring_btn.click(
+        refresh_monitoring,
+        inputs=current_email,
+        outputs=[monitoring_md, monitoring_table, monitoring_plot],
+    )
+    persona.change(
+        utils.controller.change_persona,
+        inputs=[persona, current_email, current_chat],
+        outputs=[usage_md, graph_html],
     )
 
 

@@ -1,17 +1,17 @@
-# 🎁 5. Le Wrapper (pour Gradio)
+# 5. Le Wrapper (pour Gradio)
 
 Cette page décrit les fonctions à utiliser **depuis une interface**.
 
-[⬅️ Retour au sommaire](README.md)
+[Retour au sommaire](README.md)
 
 ---
 
-## 🎯 À quoi sert le wrapper
+## À quoi sert le wrapper
 
 Le wrapper cache toute la complexité.
 
-- ✅ Vous **utilisez** ces fonctions.
-- ❌ Vous **n'utilisez pas** directement `Context`, `Chat`, la base…
+- Vous **utilisez** ces fonctions.
+- Vous **n'utilisez pas** directement `Context`, `Chat`, la base…
 
 Fichier : `src/galerelm/wrapper.py`
 
@@ -19,7 +19,7 @@ Classe : `SensAIWrapper`
 
 ---
 
-## ▶️ Démarrer
+## Démarrer
 
 ```python
 from src.galerelm.wrapper import SensAIWrapper
@@ -29,7 +29,7 @@ ai = SensAIWrapper("sqlite:///galerelm.db")
 
 ---
 
-## 📦 Les objets de réponse
+## Les objets de réponse
 
 Les fonctions ne renvoient **pas** de dictionnaires.
 
@@ -48,7 +48,7 @@ Avantage : l'éditeur **propose** les champs, et les fautes de frappe sont **dé
 
 ---
 
-## 🧑 1. Profils
+## 1. Profils
 
 | Fonction | Renvoie | Rôle |
 |----------|---------|------|
@@ -59,7 +59,7 @@ Avantage : l'éditeur **propose** les champs, et les fautes de frappe sont **dé
 
 ---
 
-## 💬 2. Conversations
+## 2. Conversations
 
 | Fonction | Renvoie | Rôle |
 |----------|---------|------|
@@ -75,7 +75,7 @@ Avantage : l'éditeur **propose** les champs, et les fautes de frappe sont **dé
 
 ---
 
-## 🤖 3. Discuter
+## 3. Discuter
 
 | Fonction | Renvoie | Rôle |
 |----------|---------|------|
@@ -101,7 +101,7 @@ Les deux fonctions :
 
 ---
 
-## 🔵 4. Mémoire longue
+## 4. Mémoire longue
 
 | Fonction | Renvoie | Rôle |
 |----------|---------|------|
@@ -111,7 +111,7 @@ Les deux fonctions :
 
 ---
 
-## 🩺 5. Système
+## 5. Système
 
 | Fonction | Renvoie | Rôle |
 |----------|---------|------|
@@ -120,7 +120,7 @@ Les deux fonctions :
 
 ---
 
-## 🧪 Exemple complet avec Gradio
+## Exemple complet avec Gradio
 
 ```python
 import gradio as gr
@@ -150,7 +150,7 @@ historique = [
 
 ---
 
-## ⚠️ Erreurs possibles
+## Erreurs possibles
 
 | Situation | Ce qui se passe |
 |-----------|-----------------|
@@ -164,4 +164,4 @@ historique = [
 
 ---
 
-[⬅️ Page précédente : Modèles](04-modeles.md) · [➡️ Page suivante : Application web](06-web-application.md)
+[Page précédente : Modèles](04-modeles.md) · [Page suivante : Application web](06-web-application.md)

@@ -1,0 +1,7 @@
+model,batch,run,total_s
+nomic-embed-text,1 texte,1,0.008
+nomic-embed-text,1 texte,2,0.007
+nomic-embed-text,1 texte,3,0.006
+nomic-embed-text,32 textes,1,0.152
+nomic-embed-text,32 textes,2,0.152
+nomic-embed-text,32 textes,3,0.153

@@ -65,7 +65,7 @@ def test_prompt_builder_with_profile_memories_and_tools():
         .with_profile(profile)
         .with_rules(["Vérifie toujours l'agenda."])
         .with_memories(memories)
-        .with_tools(registry)
+        .with_tools(registry, listing="full")
         .with_user_query("Quel temps fait-il chez moi ?")
         .build()
     )
@@ -124,7 +124,7 @@ WEATHER_TOOL = {
 
 
 def test_with_tools_lists_signature_with_required_enum_and_types():
-    prompt = PromptBuilder().with_tools([WEATHER_TOOL]).build()
+    prompt = PromptBuilder().with_tools([WEATHER_TOOL], listing="full").build()
     assert "- weather(city*, unit: celsius|fahrenheit, days: integer) — Get the weather forecast." in prompt.system_content
     assert prompt.tools_injected == 1
 
@@ -134,7 +134,7 @@ def test_with_tools_handles_unwrapped_definitions_and_missing_fields():
         {"name": "ping"},
         {"name": "clear", "description": "Clear context.", "parameters": {"type": "object", "properties": {}}},
         {"description": "pas de nom : ignoré"},
-    ]).build()
+    ], listing="full").build()
     assert "- ping()\n" in prompt.system_content
     assert "- clear() — Clear context." in prompt.system_content
     assert "ignoré" not in prompt.system_content
@@ -142,7 +142,7 @@ def test_with_tools_handles_unwrapped_definitions_and_missing_fields():
 
 
 def test_with_tools_adds_usage_rules_from_registry():
-    prompt = PromptBuilder().with_tools(ToolRegistry([Calendar()])).build()
+    prompt = PromptBuilder().with_tools(ToolRegistry([Calendar()]), listing="full").build()
     assert "Utilisation des outils :" in prompt.system_content
     assert "tool_calls" in prompt.system_content
     assert "* sont obligatoires" in prompt.system_content
@@ -154,3 +154,27 @@ def test_no_tools_block_without_tools():
         assert "Outils disponibles" not in prompt.system_content
         assert "Utilisation des outils" not in prompt.system_content
         assert prompt.tools_injected == 0
+
+
+def test_default_tools_listing_is_names_only():
+    prompt = PromptBuilder().with_tools([WEATHER_TOOL, {"name": "ping"}]).build()
+    assert "Outils disponibles : weather, ping" in prompt.system_content
+    assert "weather(" not in prompt.system_content
+    assert "S'il manque un paramètre obligatoire" in prompt.system_content
+    assert prompt.tools_injected == 2
+
+
+def test_none_listing_keeps_only_usage_rules():
+    prompt = PromptBuilder().with_tools([WEATHER_TOOL], listing="none").build()
+    assert "Outils disponibles" not in prompt.system_content
+    assert "Utilisation des outils :" in prompt.system_content
+
+
+def test_tools_listing_is_validated_in_config(tmp_path):
+    from src.config import Config, ConfigError
+    path = tmp_path / "config.yaml"
+    path.write_text("prompt:\n  tools_listing: partial\n", encoding="utf-8")
+    with pytest.raises(ConfigError, match="attendu : full, names, none"):
+        Config().load_yaml(path)
+    path.write_text("prompt:\n  tools_listing: full\n", encoding="utf-8")
+    assert Config().load_yaml(path).TOOLS_LISTING == "full"

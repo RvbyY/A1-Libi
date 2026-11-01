@@ -1,12 +1,12 @@
-# 🌐 8. RapideAPI
+# 8. RapideAPI
 
 Cette page décrit le **client HTTP** du projet.
 
-[⬅️ Retour au sommaire](README.md)
+[Retour au sommaire](README.md)
 
 ---
 
-## 🎯 Rôle
+## Rôle
 
 RapideAPI envoie les requêtes à Ollama.
 
@@ -16,7 +16,7 @@ Fichier : `src/rapideAPI/client.py`
 
 ---
 
-## ▶️ Créer un client
+## Créer un client
 
 ```python
 from src.rapideAPI import RapideAPI
@@ -32,7 +32,7 @@ api = RapideAPI(base_url="http://localhost:11434")
 
 ---
 
-## 📤 Les méthodes
+## Les méthodes
 
 | Méthode | Rôle |
 |---------|------|
@@ -51,7 +51,7 @@ Le résultat :
 
 ---
 
-## 🌊 Le streaming
+## Le streaming
 
 Ollama renvoie sa réponse en **NDJSON** : un objet JSON **par ligne**.
 
@@ -70,7 +70,7 @@ for morceau in api.stream_ndjson("api/chat", json_data=payload):
 
 ---
 
-## 🔌 Les adresses Ollama utilisées
+## Les adresses Ollama utilisées
 
 | Adresse | Utilisée par | Rôle |
 |---------|--------------|------|
@@ -81,7 +81,7 @@ for morceau in api.stream_ndjson("api/chat", json_data=payload):
 
 ---
 
-## ⚠️ Les pièges d'Ollama
+## Les pièges d'Ollama
 
 Ces erreurs ont déjà été rencontrées.
 
@@ -94,7 +94,7 @@ Ces erreurs ont déjà été rencontrées.
 
 ---
 
-## 📜 Les logs
+## Les logs
 
 Chaque requête est enregistrée :
 
@@ -107,4 +107,4 @@ En cas d'erreur, le message du serveur est affiché.
 
 ---
 
-[⬅️ Page précédente : Terminal](07-terminal.md) · [➡️ Page suivante : Glossaire](09-glossaire.md)
+[Page précédente : Terminal](07-terminal.md) · [Page suivante : Glossaire](09-glossaire.md)

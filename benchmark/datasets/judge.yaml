@@ -1,0 +1,30 @@
+# Jeu d'évaluation du juge (EV1).
+# Chaque cas fournit un document de référence (fictif : le modèle ne peut pas le connaître) et une question.
+# Le juge note la réponse de SensAI par rapport à ce document : pertinence, cohérence, fidélité (0 à 5).
+# answerable: false : la réponse n'est pas dans le document ; une réponse fidèle doit le dire, pas l'inventer.
+
+cases:
+  - id: conges
+    document: "Société Orbiane - règlement interne. Chaque salarié bénéficie de 27 jours de congés payés par an. Les congés se posent au moins 3 semaines à l'avance dans l'outil Planéo."
+    question: "Combien de jours de congés payés ai-je chez Orbiane, et comment les poser ?"
+    answerable: true
+  - id: remboursement
+    document: "Société Orbiane - notes de frais. Les frais de déplacement sont remboursés sous 15 jours ouvrés, sur présentation du justificatif scanné dans Planéo. Le plafond pour un repas est de 22 euros."
+    question: "Quel est le plafond de remboursement d'un repas chez Orbiane ?"
+    answerable: true
+  - id: teletravail
+    document: "Société Orbiane - télétravail. Le télétravail est autorisé 2 jours par semaine, hors lundi. Une indemnité de 1,80 euro par jour télétravaillé est versée."
+    question: "Quels jours puis-je télétravailler chez Orbiane, et quelle indemnité reçois-je ?"
+    answerable: true
+  - id: produit
+    document: "Fiche produit Kestrel 3. Batterie de 4 200 mAh, autonomie annoncée de 31 heures, recharge complète en 48 minutes. Garantie de 3 ans."
+    question: "Quelle est l'autonomie du Kestrel 3 et combien de temps dure sa garantie ?"
+    answerable: true
+  - id: astreinte
+    document: "Société Orbiane - astreintes. L'astreinte de week-end est rémunérée 120 euros. Elle commence le vendredi à 19 h."
+    question: "Combien est payée une astreinte de nuit en semaine chez Orbiane ?"
+    answerable: false
+  - id: produit_prix
+    document: "Fiche produit Kestrel 3. Batterie de 4 200 mAh, autonomie annoncée de 31 heures, recharge complète en 48 minutes. Garantie de 3 ans."
+    question: "Quel est le prix du Kestrel 3 ?"
+    answerable: false

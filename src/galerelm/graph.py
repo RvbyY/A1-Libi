@@ -5,8 +5,8 @@ sans dépendance externe (type LangGraph), ainsi que le vérificateur Hallucinat
 et le workflow par nœuds AntiHallucinationWorkflow.
 """
 import logging
-from dataclasses import dataclass
-from typing import Any, Callable, Optional
+from dataclasses import dataclass, field
+from typing import TYPE_CHECKING, Any, Callable, Optional
 
 from src.config import config
 from src.galerelm.intent_classifier import IntentGuardrail
@@ -21,9 +21,14 @@ from src.galerelm.models import (
     PromptBuilder,
     PromptTemplate,
 )
+from src.galerelm.prompt_simplifier import replace_last_user_message
+from src.galerelm.documents import DocumentStore
 from src.galerelm.rag import RAGManager
 from src.rapideAPI.client import RapideAPI
-from src.tools.registry import ToolExecutor, ToolRegistry
+
+if TYPE_CHECKING:
+    # Import seulement pour les annotations : src.tools importe src.galerelm, un import réel serait circulaire.
+    from src.tools.registry import ToolExecutor, ToolRegistry
 
 logger = logging.getLogger("galerelm.graph")
 
@@ -151,9 +156,30 @@ class StateGraph:
 
 @dataclass
 class HallucinationGrade:
-    """Résultat de l'évaluation anti-hallucination d'une réponse candidate."""
+    """
+    Résultat de l'évaluation d'une réponse candidate par le juge (EV1).
+    Les scores vont de 0 à 5 ; None si le juge ne les a pas donnés.
+    verified est False quand le juge n'a pas pu se prononcer (erreur, JSON illisible) : la réponse est
+    acceptée, mais signalée comme non vérifiée au lieu d'être présentée comme vérifiée.
+    """
     grounded: bool
     critique: str = ""
+    relevance: Optional[float] = None
+    coherence: Optional[float] = None
+    faithfulness: Optional[float] = None
+    unsupported_claims: list = field(default_factory=list)
+    verified: bool = True
+
+    def scores(self) -> dict[str, Optional[float]]:
+        return {"relevance": self.relevance, "coherence": self.coherence, "faithfulness": self.faithfulness}
+
+
+def _score(value: Any) -> Optional[float]:
+    """Score du juge ramené entre 0 et 5 ; None si absent ou illisible."""
+    try:
+        return max(0.0, min(5.0, float(value)))
+    except (TypeError, ValueError):
+        return None
 
 
 class HallucinationGrader:
@@ -171,7 +197,11 @@ class HallucinationGrader:
         self.api = api
         self.model = model or config.DEFAULT_MODEL
         self.template = template or PromptTemplate.hallucination_grader()
-        self.options = Options(temperature=0.0, top_k=1, num_predict=160)
+
+    @property
+    def options(self) -> Options:
+        """Paramètres du profil 'judge' (juge anti-hallucination), relus à chaque appel pour suivre config.yaml et /params."""
+        return Options.from_profile("judge")
 
     def grade(
         self,
@@ -205,17 +235,26 @@ class HallucinationGrader:
         try:
             for token in chat.execute_stream():
                 raw_output += token
-
-            parsed = IntentGuardrail.extract_json(raw_output)
-            if not parsed:
-                return HallucinationGrade(grounded=True, critique="")
-
-            grounded = bool(parsed.get("grounded", True))
-            critique = str(parsed.get("critique", "")).strip()
-            return HallucinationGrade(grounded=grounded, critique=critique)
         except Exception as exc:
             logger.error(f"[HallucinationGrader] Erreur lors de la vérification : {exc}")
-            return HallucinationGrade(grounded=True, critique="")
+            return HallucinationGrade(grounded=True, critique="", verified=False)
+
+        parsed = IntentGuardrail.extract_json(raw_output)
+        if not parsed:
+            logger.warning("[HallucinationGrader] Réponse du juge illisible : réponse marquée non vérifiée.")
+            return HallucinationGrade(grounded=True, critique="", verified=False)
+
+        claims = parsed.get("unsupported_claims") or []
+        if not isinstance(claims, list):
+            claims = [str(claims)]
+        return HallucinationGrade(
+            grounded=bool(parsed.get("grounded", True)),
+            critique=str(parsed.get("critique", "")).strip(),
+            relevance=_score(parsed.get("relevance")),
+            coherence=_score(parsed.get("coherence")),
+            faithfulness=_score(parsed.get("faithfulness")),
+            unsupported_claims=[str(c) for c in claims if str(c).strip()],
+        )
 
 
 class AntiHallucinationWorkflow:
@@ -229,19 +268,23 @@ class AntiHallucinationWorkflow:
         api: RapideAPI,
         model: str,
         grader: Optional[HallucinationGrader] = None,
-        tool_registry: Optional[ToolRegistry] = None,
+        tool_registry: Optional["ToolRegistry"] = None,
         rag_top_k: int = 3,
         max_retries: int = 2,
         on_event: Optional[Callable[[str, str, str], None]] = None,
         confirm_tool: Optional[Callable[[str, dict], bool]] = None,
         on_tool_call: Optional[Callable[[str, dict, Any, float], None]] = None,
         max_tool_rounds: int = 3,
+        persona: Optional[dict] = None,
     ):
         self.api = api
         self.model = model
+        self.persona = persona
         self.max_tool_rounds = max_tool_rounds
         self.grader = grader or HallucinationGrader(api=api, model=model)
         self.tool_registry = tool_registry
+        from src.tools.registry import ToolExecutor
+
         self.tool_executor = (
             ToolExecutor(tool_registry, confirm=confirm_tool, on_call=on_tool_call) if tool_registry else None
         )
@@ -302,9 +345,19 @@ class AntiHallucinationWorkflow:
             except Exception as exc:
                 logger.warning(f"[Workflow.retrieve] Recherche RAG échouée : {exc}")
 
-        self._emit("retrieve", "success", f"{len(memories)} souvenir(s) trouvé(s)")
+        # Extraits des documents ingérés (R1) : injectés dans le prompt et donnés au juge comme faits
+        documents = []
+        session = state.get("session")
+        if profile is not None and session is not None:
+            try:
+                documents = DocumentStore().search(session, profile.id, user_prompt, api_client=self.api, top_k=self.rag_top_k)
+            except Exception as exc:
+                logger.warning(f"[Workflow.retrieve] Recherche dans les documents échouée : {exc}")
+
+        self._emit("retrieve", "success", f"{len(memories)} souvenir(s), {len(documents)} extrait(s) de documents")
         return {
             "memories": memories,
+            "documents": documents,
             "tool_outputs": [],
             "critique": "",
             "grounded": True,
@@ -331,7 +384,9 @@ class AntiHallucinationWorkflow:
         p_builder = (
             PromptBuilder()
             .with_profile(profile)
+            .with_agent(self.persona)
             .with_memories(memories)
+            .with_documents(state.get("documents", []))
             .with_user_query(user_prompt)
         )
         if self.tool_registry:
@@ -354,7 +409,8 @@ class AntiHallucinationWorkflow:
         llm = Chat(
             model=self.model,
             api=self.api,
-            messages=context.get_messages_copy(),
+            # L'historique garde le message original / le LLM reçoit user_prompt (déjà simplifié par ChatEngine)
+            messages=replace_last_user_message(context.get_messages_copy(), user_prompt),
             tools=self.tool_registry.to_tools_list() if self.tool_registry else None,
             system_prompt=built_prompt,
         )
@@ -408,7 +464,8 @@ class AntiHallucinationWorkflow:
         self._emit("grade", "active", "Vérification factuelle...")
         user_prompt: str = state["user_prompt"]
         candidate: str = state.get("candidate_answer", "")
-        facts: list[str] = list(state.get("memories", [])) + list(state.get("tool_outputs", []))
+        documents = [f"[{chunk.label}] {chunk.content}" for _, chunk in state.get("documents", [])]
+        facts: list[str] = list(state.get("memories", [])) + documents + list(state.get("tool_outputs", []))
 
         grade_result = self.grader.grade(
             user_input=user_prompt,
@@ -426,6 +483,7 @@ class AntiHallucinationWorkflow:
         return {
             "grounded": grade_result.grounded,
             "critique": grade_result.critique,
+            "grade": grade_result,
             "graded": True,
         }
 

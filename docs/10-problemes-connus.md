@@ -1,14 +1,14 @@
-# 🐞 10. Problèmes connus
+# 10. Problèmes connus
 
 Cette page liste ce qui **reste à corriger**.
 
 Ces points ont été trouvés en analysant le projet le 5 octobre 2026.
 
-[⬅️ Retour au sommaire](README.md)
+[Retour au sommaire](README.md)
 
 ---
 
-## 🔴 Priorité haute
+## Priorité haute
 
 ### 1. Les tests sont cassés
 
@@ -29,7 +29,7 @@ Fichiers concernés :
 
 ---
 
-## 🟠 Priorité moyenne
+## Priorité moyenne
 
 ### 3. `generate.py` a sa propre `Base`
 
@@ -59,7 +59,7 @@ Fichiers concernés :
 
 ---
 
-## 🟡 Priorité basse (rangement)
+## Priorité basse (rangement)
 
 | Élément | Problème | Solution |
 |---------|----------|----------|
@@ -74,7 +74,7 @@ Fichiers concernés :
 
 ---
 
-## ⚠️ Point d'attention sur le contenu
+## Point d'attention sur le contenu
 
 Certains fichiers contiennent des consignes qui demandent à l'IA d'aider à des activités **illégales ou dangereuses** :
 
@@ -87,4 +87,4 @@ Certains fichiers contiennent des consignes qui demandent à l'IA d'aider à des
 
 ---
 
-[⬅️ Page précédente : Glossaire](09-glossaire.md) · [➡️ Page suivante : Classification d'intention](11-intent-classifier.md)
+[Page précédente : Glossaire](09-glossaire.md) · [Page suivante : Classification d'intention](11-intent-classifier.md)

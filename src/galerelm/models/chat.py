@@ -8,6 +8,7 @@ import logging
 import re
 from typing import Literal, Optional, Union
 
+from src.config import config
 from src.galerelm.models.message import Message, MessageList, ToolCalls
 from src.galerelm.models.options import Options
 from src.galerelm.models.prompt import Prompt
@@ -38,7 +39,7 @@ class Chat:
         options: Options = None,
         system_prompt: Union[str, Prompt] = None,
         think: Union[bool, Think] = None,
-        keep_alive: Union[str, int] = "2m",
+        keep_alive: Union[str, int] = None,
         logprobs: bool = False,
         top_logprobs: int = None,
         request_format: Format = None,
@@ -56,7 +57,8 @@ class Chat:
         self.options = options if options is not None else Options()
         self.stream = stream
         self.think = think
-        self.keep_alive = keep_alive
+        # Sans valeur explicite : durée de maintien en mémoire de la config (ollama.keep_alive)
+        self.keep_alive = keep_alive if keep_alive is not None else config.keep_alive
         self.logprobs = logprobs
         self.top_logprobs = top_logprobs
         self.request_format = request_format
