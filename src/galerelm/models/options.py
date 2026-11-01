@@ -6,6 +6,7 @@ from typing import Union
 
 from sqlalchemy import Column, Integer, Float, ForeignKey, JSON
 
+from src.config import config
 from src.galerelm.models.base import Base
 
 
@@ -23,40 +24,37 @@ class Options(Base):
     num_ctx: int = Column(Integer)
     num_predict: int = Column(Integer)
 
-    def __init__(self, seed: int = 0, temperature: float = 0.7, top_k: int = 40, top_p: float = 0.9, min_p: float = 0.05,
-                 stop: Union[str, list[str]] = None, num_ctx: int = 4096, num_predict: int = 512):
-        self.seed = seed
-        self.temperature = temperature
-        self.top_k = top_k
-        self.top_p = top_p
-        self.min_p = min_p
-        self.stop = stop if stop is not None else ["\nuser:", "</s>"]
-        self.num_ctx = num_ctx
-        self.num_predict = num_predict
+    PARAMS = ("seed", "temperature", "top_k", "top_p", "min_p", "stop", "num_ctx", "num_predict")
+
+    def __init__(self, seed: int = None, temperature: float = None, top_k: int = None, top_p: float = None,
+                 min_p: float = None, stop: Union[str, list[str]] = None, num_ctx: int = None,
+                 num_predict: int = None, profile: str = "chat"):
+        """
+        Les paramètres non fournis prennent la valeur du profil de génération (config.GENERATION),
+        lui-même réglable dans config.yaml, en CLI ou avec /params. Voir docs/15-parametres-generation.md.
+        """
+        defaults = config.generation_options(profile)
+        given = {"seed": seed, "temperature": temperature, "top_k": top_k, "top_p": top_p, "min_p": min_p,
+                 "stop": stop, "num_ctx": num_ctx, "num_predict": num_predict}
+        for key in self.PARAMS:
+            setattr(self, key, given[key] if given[key] is not None else defaults[key])
+
+    @classmethod
+    def from_profile(cls, profile: str) -> "Options":
+        """Paramètres actuels d'un profil : 'chat', 'judge' ou 'guardrail'."""
+        return cls(profile=profile)
 
     def format(self) -> dict:
-        return {
-            "seed": self.seed,
-            "temperature": self.temperature,
-            "top_k": self.top_k,
-            "top_p": self.top_p,
-            "min_p": self.min_p,
-            "stop": self.stop,
-            "num_ctx": self.num_ctx,
-            "num_predict": self.num_predict
-        }
+        """Charge utile 'options' pour Ollama. Une graine absente ou une liste stop vide ne sont pas envoyées."""
+        payload = {key: getattr(self, key) for key in self.PARAMS}
+        if payload["seed"] is None:
+            del payload["seed"]
+        if not payload["stop"]:
+            del payload["stop"]
+        return payload
 
     @classmethod
     def from_format(cls, data: dict):
         if data is None:
             return None
-        return cls(
-            seed=data.get("seed", 0),
-            temperature=data.get("temperature", 0.8),
-            top_k=data.get("top_k", 40),
-            top_p=data.get("top_p", 0.9),
-            min_p=data.get("min_p", 0.0),
-            stop=data.get("stop", ""),
-            num_ctx=data.get("num_ctx", 2048),
-            num_predict=data.get("num_predict", 128)
-        )
+        return cls(**{key: data.get(key) for key in cls.PARAMS})

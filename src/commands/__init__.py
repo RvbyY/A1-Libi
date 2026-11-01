@@ -12,6 +12,7 @@ from src.commands.debug import (ProfileCommand, ContextCommand, MessagesCommand,
 from src.commands.session import ClearCommand, NewCommand
 from src.commands.memory import RecallCommand
 from src.commands.schedule import ScheduleCommand
+from src.commands.params import ParamsCommand
 
 BUILTIN_COMMANDS: tuple[type[Command], ...] = (
     HelpCommand,
@@ -25,6 +26,7 @@ BUILTIN_COMMANDS: tuple[type[Command], ...] = (
     ClearCommand,
     ScheduleCommand,
     NewCommand,
+    ParamsCommand,
 )
 
 
@@ -40,5 +42,5 @@ __all__ = [
     "Command", "CommandResult", "CommandRegistry", "default_registry", "BUILTIN_COMMANDS",
     "HelpCommand", "QuitCommand",
     "ProfileCommand", "ContextCommand", "MessagesCommand", "MemoriesCommand", "PayloadCommand",
-    "RecallCommand", "ClearCommand", "ScheduleCommand", "NewCommand",
+    "RecallCommand", "ClearCommand", "ScheduleCommand", "NewCommand", "ParamsCommand",
 ]

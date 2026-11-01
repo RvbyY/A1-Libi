@@ -55,7 +55,6 @@ class IntentGuardrail:
     ):
         self.api = api
         self.model = model or config.DEFAULT_MODEL
-        self.options = Options(temperature=0.0, top_k=1, num_predict=128)
         self.classifier_template = classifier_template or PromptTemplate.intent_classifier()
         self.ambiguity_template = ambiguity_template or PromptTemplate.ambiguity_resolver()
 
@@ -67,6 +66,11 @@ class IntentGuardrail:
             self.blocked_responses = dict(SAFETY_BLOCKED_RESPONSES)
         else:
             self.blocked_responses = {}
+
+    @property
+    def options(self) -> Options:
+        """Paramètres du profil 'guardrail' (classifieur d'intention), relus à chaque appel pour suivre config.yaml et /params."""
+        return Options.from_profile("guardrail")
 
     # ── Construction des Prompts via PromptBuilder ───────────────────
 

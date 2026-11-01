@@ -172,7 +172,11 @@ class HallucinationGrader:
         self.api = api
         self.model = model or config.DEFAULT_MODEL
         self.template = template or PromptTemplate.hallucination_grader()
-        self.options = Options(temperature=0.0, top_k=1, num_predict=160)
+
+    @property
+    def options(self) -> Options:
+        """Paramètres du profil 'judge' (juge anti-hallucination), relus à chaque appel pour suivre config.yaml et /params."""
+        return Options.from_profile("judge")
 
     def grade(
         self,

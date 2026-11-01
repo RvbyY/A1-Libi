@@ -1,0 +1,62 @@
+# Jeu de référence pour mesurer les améliorations de SensAI.
+# Protocole et résultats : docs/17-ameliorations-mesurees.md
+#
+# tool_choice : la demande doit déclencher l'outil attendu (expected), ou aucun outil (expected: null).
+# tool_answer : l'outil tools_selftest est appelé ; la réponse finale doit reprendre le mot renvoyé.
+# memory      : un fait est dit dans un premier chat ; la question est posée dans un nouveau chat.
+#               La réponse doit contenir tous les mots attendus (sans tenir compte des accents ni de la casse).
+
+tool_choice:
+  - prompt: "Ajoute une réunion d'équipe demain de 10h à 11h dans mon agenda."
+    expected: calendar
+  - prompt: "Quels sont mes rendez-vous entre le 3 et le 7 novembre 2026 ?"
+    expected: calendar
+  - prompt: "Envoie un email à alice@example.com pour lui dire que la réunion est reportée."
+    expected: email
+  - prompt: "Envoie un message Telegram à 123456789 : j'arrive dans dix minutes."
+    expected: telegram
+  - prompt: "Rappelle-moi dans 30 minutes de boire de l'eau."
+    expected: create_task
+  - prompt: "Cherche dans ta mémoire ce que je t'ai dit sur mon chien."
+    expected: search_memory
+  - prompt: "Fais un résumé de notre conversation actuelle."
+    expected: summarize_session
+  - prompt: "Teste les outils avec le message ping."
+    expected: tools_selftest
+  - prompt: "Quelle est la capitale de l'Italie ?"
+    expected: null
+  - prompt: "Explique la différence entre une liste et un tuple en Python."
+    expected: null
+  - prompt: "Bonjour, comment vas-tu aujourd'hui ?"
+    expected: null
+  - prompt: "Traduis le mot « merci » en anglais."
+    expected: null
+
+tool_answer:
+  - prompt: "Teste les outils avec le message abricot."
+    expected: abricot
+  - prompt: "Teste les outils avec le message citron."
+    expected: citron
+  - prompt: "Teste les outils avec le message banane."
+    expected: banane
+  - prompt: "Teste les outils avec le message kiwi."
+    expected: kiwi
+  - prompt: "Teste les outils avec le message mangue."
+    expected: mangue
+
+memory:
+  - fact: "Retiens bien ceci : j'habite à Lyon."
+    question: "Dans quelle ville est-ce que j'habite ?"
+    expected: [lyon]
+  - fact: "Retiens bien ceci : mon chien s'appelle Rex."
+    question: "Comment s'appelle mon chien ?"
+    expected: [rex]
+  - fact: "Retiens bien ceci : je travaille chez Airbus comme développeur."
+    question: "Pour quelle entreprise est-ce que je travaille ?"
+    expected: [airbus]
+  - fact: "Retiens bien ceci : mon plat préféré est la raclette."
+    question: "Quel est mon plat préféré ?"
+    expected: [raclette]
+  - fact: "Retiens bien ceci : ma couleur préférée est le vert."
+    question: "Quelle est ma couleur préférée ?"
+    expected: [vert]
