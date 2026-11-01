@@ -60,10 +60,12 @@ GENERATION_PARAMS: dict[str, tuple[type, Optional[float], Optional[float]]] = {
 }
 
 DEFAULT_GENERATION: dict[str, dict[str, Any]] = {
-    # Conversation : un peu de variété, réponse complète (-1 = jusqu'à la fin naturelle du modèle)
+    # Conversation : un peu de variété, réponse complète (-1 = jusqu'à la fin naturelle du modèle).
+    # num_ctx 8192 : le prompt réel fait ~2 300 tokens avant tout historique (outils compris) ; le benchmark
+    # (docs/16-benchmark-ressources.md) mesure +104 Mo de VRAM par rapport à 4096, sans perte de vitesse.
     "chat": {
         "temperature": 0.7, "top_k": 40, "top_p": 0.9, "min_p": 0.05,
-        "num_ctx": 4096, "num_predict": -1, "seed": None, "stop": [],
+        "num_ctx": 8192, "num_predict": -1, "seed": None, "stop": [],
     },
     # Juge et classifieur : déterministes (température 0, top_k 1) et courts (une réponse JSON)
     "judge": {

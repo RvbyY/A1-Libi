@@ -70,6 +70,16 @@ per profile (`chat`, `judge`, `guardrail`) in `config.yaml`, with CLI flags (`--
 `--num-predict`, `--seed`, `--keep-alive`…) or live with `/params` in the chat.
 Values, validation rules and the reasons behind the defaults: [docs/15-parametres-generation.md](docs/15-parametres-generation.md).
 
+### Local resource benchmark
+
+Speed, latency and memory of the model on the local machine (GPU vs CPU, context sizes, cold start,
+thinking, embeddings), with a reproducible protocol and the measured results:
+[docs/16-benchmark-ressources.md](docs/16-benchmark-ressources.md).
+
+```bash
+PYTHONPATH=. .venv/bin/python -m benchmark.resources
+```
+
 ### Anti-hallucination loop
 
 ```bash

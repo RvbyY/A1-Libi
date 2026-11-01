@@ -55,7 +55,7 @@ Un réglage hors des profils : **`keep_alive`**.
 | `top_k` | 40 | 1 | 1 |
 | `top_p` | 0.9 | 1.0 | 1.0 |
 | `min_p` | 0.05 | 0.0 | 0.0 |
-| `num_ctx` | 4096 | 4096 | 2048 |
+| `num_ctx` | 8192 | 4096 | 2048 |
 | `num_predict` | -1 | 160 | 128 |
 | `seed` | aléatoire | aléatoire | aléatoire |
 | `stop` | aucun | aucun | aucun |
@@ -66,8 +66,12 @@ Un réglage hors des profils : **`keep_alive`**.
 - **`temperature` 0.7, `top_k` 40, `top_p` 0.9** : un peu de variété, sans réponses incohérentes.
   Ce sont des valeurs courantes, proches des réglages par défaut d'Ollama.
 - **`min_p` 0.05** : écarte les mots très improbables, qui produisent des fautes ou des mots inventés.
-- **`num_ctx` 4096** : de quoi contenir le prompt système (instructions, souvenirs, liste des outils),
-  les 10 derniers messages (`CONTEXT_LIMIT`) et la réponse.
+- **`num_ctx` 8192** : choisi d'après le [benchmark](16-benchmark-ressources.md).
+  - Le prompt réel de SensAI fait déjà environ 2 300 tokens au premier message, dont environ 2 100 pour les 12 outils,
+    et environ 2 900 tokens avec 10 messages d'historique.
+  - À 4096, il ne restait qu'environ 1 200 tokens pour la réponse, les souvenirs et un message un peu long.
+    Au-delà, Ollama coupe le début du prompt sans prévenir.
+  - Passer de 4096 à 8192 coûte 104 Mo de VRAM (1 320 à 1 424 Mo), sans perte de vitesse mesurable.
 - **`num_predict` -1** : la réponse n'est jamais coupée au milieu. Le modèle s'arrête à la fin de sa réponse.
 - **`seed` aléatoire** : deux questions identiques peuvent recevoir deux formulations différentes.
   Pour une démo ou un test reproductible, fixer une graine : `--seed 42`.
@@ -86,10 +90,9 @@ Un réglage hors des profils : **`keep_alive`**.
 - 30 minutes couvrent une session de travail, puis libèrent la mémoire vidéo.
 - `-1` garde le modèle chargé en permanence, comme le fait `script/backend.sh` au préchargement.
 
-> [!NOTE]
-> Ces valeurs sont des choix raisonnés, pas encore des mesures.
-> Le benchmark des ressources locales (latence, mémoire, tokens par seconde selon `num_ctx`)
-> servira à confirmer ou à ajuster `num_ctx` et `keep_alive` pour la machine cible.
+Mesures qui justifient `num_ctx` et `keep_alive` : [Benchmark des ressources locales](16-benchmark-ressources.md).
+- Un démarrage à froid coûte 1,8 à 3,6 secondes avant le premier token, contre 0,05 seconde modèle chargé.
+- Le modèle chargé occupe 1,3 à 1,4 Go de VRAM : 30 minutes de maintien est un compromis raisonnable sur une carte de 6 Go.
 
 ---
 
