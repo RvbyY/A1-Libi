@@ -207,6 +207,8 @@ def parse_args(argv: Optional[list[str]] = None) -> argparse.Namespace:
     generation.add_argument("--num-ctx", type=int, help="Taille de la fenêtre de contexte, en tokens.")
     generation.add_argument("--num-predict", type=int, help="Nombre max de tokens générés (-1 = pas de limite).")
     generation.add_argument("--seed", help="Graine aléatoire pour des réponses reproductibles ('none' = aléatoire).")
+    parser.add_argument("--tools-listing", choices=["full", "names", "none"],
+                        help="Description des outils dans le prompt système (voir docs/17-ameliorations-mesurees.md).")
     generation.add_argument("--keep-alive", help="Durée de maintien du modèle en mémoire ('30m', '1h', '-1' = toujours).")
     args = parser.parse_args(argv)
 
@@ -231,6 +233,7 @@ def load_config(args: argparse.Namespace) -> None:
         EMBED_MODEL=args.embed_model,
         DB_URL=args.db,
         KEEP_ALIVE=args.keep_alive,
+        TOOLS_LISTING=args.tools_listing,
     )
     config.apply_generation_overrides(
         "chat",

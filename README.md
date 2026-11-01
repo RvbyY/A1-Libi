@@ -80,6 +80,16 @@ thinking, embeddings), with a reproducible protocol and the measured results:
 PYTHONPATH=. .venv/bin/python -m benchmark.resources
 ```
 
+### Measured improvements
+
+Each improvement (re-prompting after tools, cross-chat memory, tool listing in the prompt) is compared to its
+baseline on a fixed reference set, with the results and decisions in
+[docs/17-ameliorations-mesurees.md](docs/17-ameliorations-mesurees.md).
+
+```bash
+PYTHONPATH=. .venv/bin/python -m benchmark.quality --reps 3
+```
+
 ### Anti-hallucination loop
 
 ```bash

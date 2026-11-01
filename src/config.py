@@ -35,7 +35,15 @@ YAML_KEYS: dict[tuple[str, str], str] = {
     ("database", "url"): "DB_URL",
     ("memory", "context_limit"): "CONTEXT_LIMIT",
     ("memory", "deep_context_limit"): "DEEP_CONTEXT_LIMIT",
+    ("prompt", "tools_listing"): "TOOLS_LISTING",
 }
+
+# Description des outils dans le prompt système (ils sont aussi envoyés à Ollama dans le champ "tools") :
+#   full  : une signature par outil (paramètres, valeurs possibles) et sa description
+#   names : seulement la liste des noms
+#   none  : aucune liste, seulement les règles d'utilisation
+# Choix mesuré : docs/17-ameliorations-mesurees.md.
+TOOLS_LISTING_MODES = ("full", "names", "none")
 
 
 class ConfigError(ValueError):
@@ -142,6 +150,10 @@ class Config:
     # Nombre max d'entrées vectorielles dans la mémoire long terme (DeepContext)
     DEEP_CONTEXT_LIMIT: int = int(os.getenv("DEEP_CONTEXT_LIMIT", "4096"))
 
+    # ── Prompt ──
+    # "names" : choix mesuré (-288 tokens par requête, aucune perte de réussite), voir docs/17-ameliorations-mesurees.md
+    TOOLS_LISTING: str = os.getenv("TOOLS_LISTING", "names")
+
     # ── Outils de Communication (Discord, Telegram, Email) ──
     DISCORD_TOKEN: str = os.getenv("DISCORD_TOKEN", "")
     DISCORD_ID: str = os.getenv("DISCORD_ID", "")
@@ -189,6 +201,8 @@ class Config:
 
     def _set(self, attr: str, value: Any, source: str) -> None:
         """Affecte une valeur en la convertissant au type de la valeur par défaut."""
+        if attr == "TOOLS_LISTING" and value not in TOOLS_LISTING_MODES:
+            raise ConfigError(f"{source} : valeur invalide '{value}' (attendu : {', '.join(TOOLS_LISTING_MODES)}).")
         expected = type(getattr(Config, attr))
         try:
             setattr(self, attr, expected(value))

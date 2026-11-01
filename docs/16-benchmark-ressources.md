@@ -190,7 +190,9 @@ Mesurée sur une vraie conversation (`prompt_eval_count` d'Ollama), avec la conf
    - Aucune perte de vitesse au-delà du bruit de mesure (lecture longue : -5 % à 8192).
 4. **Le démarrage à froid coûte 2 à 4 secondes.** Garder le modèle chargé (`keep_alive`) évite ce coût à chaque message.
 5. **Les outils représentent 92 % du prompt** (2 091 tokens sur 2 275).
-   C'est la principale source de coût de lecture, et donc la première piste d'optimisation.
+   L'essentiel vient du schéma JSON envoyé à Ollama (environ 1 770 tokens), indispensable à l'appel d'outils.
+   La description en double dans le prompt système en coûtait 288 : elle a été réduite aux noms
+   (voir [Améliorations mesurées](17-ameliorations-mesurees.md)).
 6. **La réflexion ajoute 0,3 seconde** sur cette question, avec 30 tokens.
    Sur une question complexe, elle peut être bien plus longue, et rien ne s'affiche pendant ce temps.
 7. **Les embeddings sont négligeables** : 0,15 seconde pour 32 messages. Archiver tous les chats en mémoire longue ne ralentit pas SensAI.
@@ -210,9 +212,8 @@ Les valeurs sont appliquées dans [Paramètres de génération](15-parametres-ge
 
 ### Pistes suivantes, chiffrées
 
-- **Réduire le coût des outils** (2 091 tokens par requête) : ne plus décrire les outils deux fois
-  (dans le prompt système et dans le champ `tools` d'Ollama). Ce sera mesuré avec une baseline dans
-  l'évaluation des améliorations.
+- **Réduire le coût des outils** : fait. La description en double est réduite aux noms, -288 tokens par requête,
+  mesuré contre une baseline dans [Améliorations mesurées](17-ameliorations-mesurees.md).
 - **Rendre la réflexion configurable** (`think`), et l'afficher pendant qu'elle a lieu.
 
 ---
