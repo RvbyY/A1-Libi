@@ -100,6 +100,15 @@ def test_discord_and_telegram_tools_with_fake_api():
     )
     assert res.success is True
 
+    res_batch = discord_tool.execute(
+        ctx,
+        {
+            "recipients": ["123456789012345678", "123456789012345679"],
+            "content": "Hello everyone",
+        },
+    )
+    assert res_batch.success is True
+
     class FakeTelegramAPI:
         def get(self, url, **kwargs):
             return '<html><head><meta property="og:title" content="User"/></head></html>'
