@@ -528,10 +528,13 @@ class ChatEngine:
 
     def follow_up_chat(self, context: Context) -> Chat:
         """Prépare la génération qui suit l'exécution d'outils, avec le même prompt système."""
+        messages = context.get_messages_copy()
+        if len(messages) > 6:
+            messages = type(messages)(messages[-6:])
         return Chat(
             model=self.model,
             api=self.api,
-            messages=self._llm_messages(context),
+            messages=messages,
             tools=self._get_tools_list(),
             system_prompt=self.last_built_prompt,
         )

@@ -38,7 +38,7 @@ class Discord(ToolsInterface):
 
     @property
     def description(self) -> str:
-        return "Send a Discord direct message from the A1-Libi Discord bot to a recipient."
+        return "Send the same Discord direct message from the A1-Libi Discord bot to one or more recipients."
 
     @property
     def parameters(self) -> dict:
@@ -49,12 +49,17 @@ class Discord(ToolsInterface):
                     "type": "string",
                     "description": "Discord user ID of the recipient (17-20 digits).",
                 },
+                "recipients": {
+                    "type": "array",
+                    "items": {"type": "string"},
+                    "description": "Discord user IDs when sending the same message to multiple recipients.",
+                },
                 "content": {
                     "type": "string",
                     "description": "Body of the message.",
                 },
             },
-            "required": ["recipient", "content"],
+            "required": ["content"],
         }
 
     @staticmethod
@@ -80,24 +85,42 @@ class Discord(ToolsInterface):
 
     def execute(self, context: ToolContext, payload: dict) -> ToolResult:
         del context
-        recipient = str(payload.get("recipient", ""))
+        raw_recipients = payload.get("recipients")
+        if raw_recipients is None:
+            raw_recipients = [payload.get("recipient", "")]
+        if not isinstance(raw_recipients, list):
+            return ToolResult(False, "Discord recipients must be a list.")
+        recipients = [str(recipient) for recipient in raw_recipients]
         content = str(payload.get("content", ""))
 
         if not self.token:
             return ToolResult(False, "The bot doesn't have a DISCORD_TOKEN set.")
-        if not self.is_valid_user_id(recipient):
+        if not recipients or any(not self.is_valid_user_id(recipient) for recipient in recipients):
             return ToolResult(False, "Invalid Discord recipient user ID.")
         if not content:
             return ToolResult(False, "Message content cannot be empty.")
 
-        try:
-            self.send_discord_message(recipient, content)
-        except ValueError as exc:
-            return ToolResult(False, f"Discord rejected the message: {exc}")
-        except Exception as exc:
-            return ToolResult(False, f"Discord message could not be sent: {exc}")
+        sent = []
+        failures = []
+        for recipient in dict.fromkeys(recipients):
+            try:
+                self.send_discord_message(recipient, content)
+                sent.append(recipient)
+            except ValueError as exc:
+                failures.append(f"{recipient}: {exc}")
+            except Exception as exc:
+                failures.append(f"{recipient}: {exc}")
+
+        if failures:
+            detail = "; ".join(failures)
+            return ToolResult(
+                False,
+                f"Discord sent {len(sent)}/{len(dict.fromkeys(recipients))} message(s); failures: {detail}",
+                data={"sent": sent, "failed": failures},
+            )
 
         return ToolResult(
             True,
-            f"Message sent from A1-Libi Bot to {recipient}.",
+            f"Message sent from A1-Libi Bot to {', '.join(sent)}.",
+            data={"sent": sent},
         )
