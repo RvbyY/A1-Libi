@@ -1,4 +1,4 @@
-# 🛠️ 13. Utiliser les context tools
+# 13. Utiliser les context tools
 
 Cette page explique comment fonctionne chaque tool.
 
@@ -8,11 +8,11 @@ Chaque appel reçoit :
 - un dictionnaire d'arguments ;
 - un `ToolResult` en retour.
 
-[⬅️ Retour au sommaire](README.md)
+[Retour au sommaire](README.md)
 
 ---
 
-## 🧠 Memory
+## Memory
 
 Fichier :
 [`src/tools/memory/memory_tools.py`](../src/tools/memory/memory_tools.py)
@@ -99,7 +99,7 @@ Elle ne supprime pas les souvenirs déjà archivés dans `DeepContext`.
 
 ---
 
-## 📅 Calendar
+## Calendar
 
 Fichier :
 [`src/tools/calendar/calendar_tools.py`](../src/tools/calendar/calendar_tools.py)
@@ -158,7 +158,7 @@ Un utilisateur ne peut annuler que son propre événement.
 
 ---
 
-## 💬 Discord
+## Discord
 
 Fichier :
 [`src/tools/communication/discord.py`](../src/tools/communication/discord.py)
@@ -186,7 +186,7 @@ Le token ne doit jamais être placé directement dans le fichier Python.
 
 ---
 
-## ✈️ Telegram
+## Telegram
 
 Fichier :
 [`src/tools/communication/telegram.py`](../src/tools/communication/telegram.py)
@@ -218,7 +218,7 @@ en échec.
 
 ---
 
-## ✉️ Email
+## Email
 
 Fichier :
 [`src/tools/communication/email.py`](../src/tools/communication/email.py)
@@ -254,7 +254,7 @@ Le serveur doit donc être configuré sur la machine qui exécute SensAI.
 
 ---
 
-## ⏰ Tasks
+## Tasks
 
 Les tools de tâches utilisent le modèle `ScheduledTask`.
 
@@ -391,7 +391,7 @@ Les trois noms exposés au modèle sont :
 
 ---
 
-## 🧪 Tools selftest
+## Tools selftest
 
 Fichier :
 [`src/tools/diagnostic/selftest_tool.py`](../src/tools/diagnostic/selftest_tool.py)
@@ -434,7 +434,7 @@ Avec `"mode": "fail"`, le tool renvoie `success=False` et
 Demandez simplement : *« Teste les outils avec le message ping »*. La CLI affiche l'appel :
 
 ```text
-⚙ tool tools_selftest(message='ping') ✓ Selftest OK: ping (0 ms)
+tool tools_selftest(message='ping') ✓ Selftest OK: ping (0 ms)
 ```
 
 Chaque appel d'outil est affiché de la même façon (nom, arguments tronqués, ✓/✗, message, durée),
@@ -442,7 +442,7 @@ et journalisé par le logger `sensai.tools`.
 
 ---
 
-## ✅ Lire un `ToolResult`
+## Lire un `ToolResult`
 
 Tous les tools retournent la même structure.
 
@@ -472,7 +472,7 @@ Le champ `data` contient les données utiles au programme ou au modèle.
 
 ---
 
-## 🧪 Ajouter un nouveau tool
+## Ajouter un nouveau tool
 
 1. Créer une classe qui hérite de `ToolsInterface`.
 2. Donner un nom unique à la propriété `name`.
@@ -510,4 +510,4 @@ class Reminder(ToolsInterface):
 
 ---
 
-[⬅️ Page précédente : Architecture des context tools](12-architecture-context-tools.md)
+[Page précédente : Architecture des context tools](12-architecture-context-tools.md)

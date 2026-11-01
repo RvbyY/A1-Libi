@@ -1,4 +1,4 @@
-# ✅ Check-list : implémenter un tool
+# Check-list : implémenter un tool
 
 À dérouler pour **chaque** nouveau tool (ou modification d'un tool existant) avant d'ouvrir la PR.
 Exemple de référence : [`tasks/complete_task.py`](tasks/complete_task.py).

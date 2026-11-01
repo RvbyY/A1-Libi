@@ -1,10 +1,10 @@
-# 📖 9. Glossaire
+# 9. Glossaire
 
 Les mots techniques, expliqués simplement.
 
 Classés par ordre **alphabétique**.
 
-[⬅️ Retour au sommaire](README.md)
+[Retour au sommaire](README.md)
 
 ---
 
@@ -136,4 +136,4 @@ Voir **Facade**.
 
 ---
 
-[⬅️ Page précédente : RapideAPI](08-rapideapi.md) · [➡️ Page suivante : Problèmes connus](10-problemes-connus.md)
+[Page précédente : RapideAPI](08-rapideapi.md) · [Page suivante : Problèmes connus](10-problemes-connus.md)
