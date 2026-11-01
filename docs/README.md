@@ -52,6 +52,7 @@ Lisez les pages dans l'ordre si vous découvrez le projet.
 | 15 | [Paramètres de génération](15-parametres-generation.md) | Les réglages envoyés au modèle, où les changer et pourquoi |
 | 16 | [Benchmark des ressources](16-benchmark-ressources.md) | Vitesse, latence et mémoire du modèle sur la machine, protocole et résultats |
 | 17 | [Améliorations mesurées](17-ameliorations-mesurees.md) | Chaque amélioration comparée à sa baseline, sur un jeu de référence |
+| 18 | [Évaluation par un LLM juge](18-evaluation-juge.md) | Scores du juge, signalement des hallucinations, comparaison de versions |
 
 ---
 

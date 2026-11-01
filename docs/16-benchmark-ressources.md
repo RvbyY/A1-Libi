@@ -68,7 +68,7 @@ Pour que les mesures soient comparables :
 
 ### Reproduire
 
-1. Lancer Ollama : `ollama serve` (ou `./script/backend.sh`).
+1. Lancer Ollama : `ollama serve` (ou `./scripts/A1Libi -run` avec Docker).
 2. Lancer le benchmark depuis la racine du projet :
 
    ```bash

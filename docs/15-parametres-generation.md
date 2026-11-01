@@ -88,7 +88,7 @@ Un réglage hors des profils : **`keep_alive`**.
 
 - Un modèle déchargé doit être rechargé au message suivant, ce qui coûte plusieurs secondes.
 - 30 minutes couvrent une session de travail, puis libèrent la mémoire vidéo.
-- `-1` garde le modèle chargé en permanence, comme le fait `script/backend.sh` au préchargement.
+- `-1` garde le modèle chargé en permanence.
 
 Mesures qui justifient `num_ctx` et `keep_alive` : [Benchmark des ressources locales](16-benchmark-ressources.md).
 - Un démarrage à froid coûte 1,8 à 3,6 secondes avant le premier token, contre 0,05 seconde modèle chargé.
@@ -184,7 +184,7 @@ Avant cette version :
 - `num_predict` 512 **coupait** les réponses longues ;
 - la graine était **fixée à 0** sans que ce soit documenté ;
 - des textes d'arrêt arbitraires (`"\nuser:"`, `"</s>"`) pouvaient couper une réponse ;
-- `keep_alive` valait `"2m"` en dur, alors que `script/backend.sh` préchargeait le modèle pour toujours ;
+- `keep_alive` valait `"2m"` en dur, alors que l'ancien script de lancement préchargeait le modèle pour toujours ;
 - le juge et le guardrail avaient leurs propres valeurs écrites en dur.
 
 Toutes ces valeurs viennent maintenant d'un seul endroit, la config, et sont validées.

@@ -2,7 +2,7 @@
 
 [Retour aux user stories](README.md)
 
-**Statut :** Partiel (RAG sur les conversations, pas encore sur des documents)
+**Statut :** Fait
 
 ---
 
@@ -53,32 +53,30 @@
 
 ---
 
-## Ce qu'il reste à faire
+## Ce qui a été ajouté pour terminer la feature
 
-Objectif : passer d'un RAG sur les conversations à un RAG sur des **documents locaux**.
+- **Ingestion** (`src/galerelm/documents.py`) : `/ingest <fichier ou dossier>` lit les fichiers texte
+  (`.md`, `.txt`, `.rst`, `.csv`, `.json`, `.yaml`, `.py`, `.html`), en ignorant les dossiers cachés.
+- **Découpage** en fragments d'environ 800 caractères, coupés entre deux paragraphes, phrases ou mots,
+  avec un chevauchement de 100 caractères.
+- **Vectorisation** avec le modèle d'embedding, et **stockage** dans la table `document_chunks` (un profil = ses documents).
+  Réingérer un fichier remplace ses anciens fragments.
+- **Recherche** par similarité cosinus ; les meilleurs extraits sont injectés dans le prompt avec leur source
+  (`[guide.md#2]`), et donnés au juge anti-hallucination comme faits.
+- `/documents` liste les fichiers ingérés ; `/documents oublier <chemin>` ou `oublier tout` les retire.
 
-1. **Lire les documents.**
-   - Créer `src/galerelm/ingest.py` avec une classe `DocumentIngestor`.
-   - Accepter un fichier ou un dossier, et lire les fichiers `.md` et `.txt`.
-   - Les PDF demandent une dépendance (`pypdf`) à ajouter dans `requirements.txt`.
-2. **Découper en fragments.**
-   - Fragments d'environ 500 caractères, avec un chevauchement d'environ 50 caractères.
-   - Couper de préférence sur les fins de paragraphe ou de phrase.
-3. **Vectoriser et stocker.**
-   - Ajouter un modèle ORM `DocumentChunk` : source, position, contenu, vecteur.
-   - L'exporter dans `src/galerelm/models/__init__.py` pour que la table soit créée.
-   - Réutiliser `EmbeddingService.embed_batch` (`src/galerelm/rag.py`).
-4. **Rechercher et injecter.**
-   - Ajouter une recherche par similarité cosinus sur les fragments, comme `RAGManager.search`.
-   - Dans `PromptBuilder`, ajouter un bloc « Extraits de documents » qui cite la source de chaque fragment.
-5. **Donner une commande.**
-   - Créer `/ingest <chemin>` dans `src/commands/`, qui affiche le nombre de fragments ajoutés.
-6. **Tester.**
-   - Ingestion d'un dossier temporaire, taille et chevauchement des fragments.
-   - Recherche avec un faux client d'embedding, et injection dans le prompt avec la source.
+### Tests de la finalisation
 
-**Quand le considérer comme fait :** `/ingest docs/` puis une question sur la doc donne une réponse
-appuyée sur les bons extraits, cités avec leur fichier.
+```bash
+.venv/bin/python -m pytest -q \
+  src/galerelm/unit_tests/test_documents.py
+```
+
+Résultat au 1er novembre 2026 : 10 tests passés, 0 en échec.
+
+### Vérification avec le vrai modèle
+
+Mesuré avec le vrai modèle dans [l'évaluation par le juge](../18-evaluation-juge.md) : avec les documents ingérés, la fidélité des réponses passe de 3,2 à 5 sur 5, et les réponses ancrées de 40 % à 100 %.
 
 ---
 
@@ -116,6 +114,5 @@ Résultat au 1er novembre 2026 : 5 tests passés, 0 en échec.
 
 ## Limites
 
-- Pas d'ingestion de fichiers (PDF, Markdown…) ni de découpage en fragments : c'est ce qui manque pour valider R1 en entier.
-- Pas de seuil de pertinence : les 3 meilleurs souvenirs sont injectés même s'ils n'ont aucun rapport.
-- Un petit modèle (2B) n'exploite pas toujours les souvenirs injectés.
+- Pas de PDF : il faudrait ajouter une bibliothèque de lecture PDF.
+- Pas de seuil de pertinence ni de reclassement des extraits : c'est le périmètre de R2.

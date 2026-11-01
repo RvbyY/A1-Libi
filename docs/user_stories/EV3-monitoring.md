@@ -2,7 +2,7 @@
 
 [Retour aux user stories](README.md)
 
-**Statut :** Partiel (visualiseur temps réel et logs ; pas encore de tableau de métriques)
+**Statut :** Fait
 
 ---
 
@@ -46,31 +46,36 @@
 
 - [x] `eval_count` et `eval_duration` d'Ollama sont conservés dans chaque réponse.
 - [x] Chaque appel d'outil est journalisé avec sa durée en millisecondes.
-- [ ] Les métriques sont regroupées dans un tableau de bord (à faire).
+- [x] Les métriques sont regroupées dans un tableau de bord : onglet Monitoring de la webapp et commande `/stats`.
 
 **Vérifié par :** `test_chat_response`, `test_executor_reports_each_call_to_observer`.
 
 ---
 
-## Ce qu'il reste à faire
+## Ce qui a été ajouté pour terminer la feature
 
-Objectif : **conserver** chaque interaction et en tirer une **vue des métriques** dans le temps.
+- **Journal structuré** : chaque échange écrit une ligne dans la table `interaction_logs` : date, profil, modèle, agent,
+  statut (`ok`, `blocked`, `error`, `interrupted`), erreur, latence, premier morceau, tokens lus et générés,
+  taille du prompt, souvenirs et extraits injectés, outils appelés et échecs, scores du juge.
+  La même ligne part aussi dans le logger `galerelm.engine` au format JSON.
+- **Métriques** (`src/galerelm/metrics.py`) : volume, taux d'erreur, latence moyenne, médiane et p95, tokens, outils,
+  **jour par jour** (pour voir une dérive) et **par modèle**.
+- **Vues** : commande `/stats [jours]` dans le terminal, et onglet « Monitoring » dans la webapp
+  (indicateurs, tableau par jour et courbe de latence).
+- Une erreur de journalisation ne casse jamais la conversation.
 
-1. **Journaliser chaque tour.**
-   - Ajouter une table `InteractionLog` : date, profil, modèle, prompt système (ou son empreinte),
-     question, réponse, outils appelés, latence totale, `prompt_eval_count`, `eval_count`, erreur éventuelle.
-   - L'écrire à la fin de `ChatEngine.stream_turn`, et aussi en cas d'exception.
-   - Les appels d'outils sont déjà mesurés par `ToolExecutor` (`on_call`) : les rattacher au tour.
-2. **Calculer les métriques.**
-   - Nombre d'appels par jour, latence moyenne et p95, taux d'erreur, tokens moyens, par modèle.
-3. **Afficher la vue.**
-   - Ajouter un onglet « Monitoring » dans la webapp, avec des graphiques Gradio (`gr.LinePlot`) dans le temps.
-   - Ajouter une commande `/stats` dans la CLI pour un résumé texte.
-4. **Tester.**
-   - Écriture d'un log par tour (succès et erreur), calcul des métriques sur des données connues.
+### Tests de la finalisation
 
-**Quand le considérer comme fait :** après quelques conversations, l'onglet Monitoring montre
-le volume, la latence et le taux d'erreur par jour, et `/stats` donne les mêmes chiffres.
+```bash
+.venv/bin/python -m pytest -q \
+  src/galerelm/unit_tests/test_monitoring.py
+```
+
+Résultat au 1er novembre 2026 : 9 tests passés, 0 en échec.
+
+### Vérification avec le vrai modèle
+
+Après trois échanges réels, `/stats` affichait : 3 échanges, 0 % d'erreur, latence moyenne 3,13 s (p95 8,22 s), 2 422 tokens lus en moyenne.
 
 ---
 
@@ -107,5 +112,5 @@ Résultat au 1er novembre 2026 : 4 tests passés, 0 en échec.
 
 ## Limites
 
-- Pas de tableau de bord historique : les métriques ne sont ni agrégées ni conservées dans la durée.
-- Les logs vont dans la console ; il n'y a pas encore de fichier de logs structuré (JSON).
+- La question et la réponse sont gardées tronquées à 500 caractères dans le journal.
+- Les tokens enregistrés sont ceux de la dernière génération de l'échange (après une relance d'outil, c'est la relance).

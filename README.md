@@ -80,6 +80,20 @@ thinking, embeddings), with a reproducible protocol and the measured results:
 PYTHONPATH=. .venv/bin/python -m benchmark.resources
 ```
 
+### Agents, documents, guardrails, monitoring, MCP
+
+| Feature | How to use it |
+|---------|---------------|
+| Personas (A5) | `--persona tuteur`, `/persona <name>` in the chat, `personas:` in `config.yaml` |
+| Document RAG (R1) | `/ingest <file or folder>`, `/documents` |
+| Guardrails (EV2) | `--guardrail safety`, `--output-filter anonymize`, `guardrails:` in `config.yaml` |
+| Monitoring (EV3) | `/stats [days]`, Monitoring panel in the web app |
+| LLM judge (EV1) | `--anti-hallucination`; compare versions with `python -m benchmark.judge` |
+| MCP (T1) | `mcp_servers:` in `config.yaml`; our own server: `python -m src.tools.mcp.server` |
+| Scheduling (X5) | `/schedule in 10m ...`, runs in the background (`--no-scheduler` to disable) |
+
+Details and proofs for each feature: [docs/user_stories](docs/user_stories/README.md).
+
 ### Measured improvements
 
 Each improvement (re-prompting after tools, cross-chat memory, tool listing in the prompt) is compared to its
