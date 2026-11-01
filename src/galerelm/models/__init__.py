@@ -14,6 +14,8 @@ from src.galerelm.models.profile import Profile
 from src.galerelm.models.chat import Chat
 from src.galerelm.models.prompt import Prompt, PromptBuilder, PromptTemplate
 from src.galerelm.models.scheduled_task import ScheduledTask
+from src.galerelm.models.document import DocumentChunk
+from src.galerelm.models.interaction_log import InteractionLog
 
 __all__ = [
     "Base",
@@ -33,6 +35,10 @@ __all__ = [
     "Prompt", "PromptBuilder", "PromptTemplate",
     # Scheduled tasks
     "ScheduledTask",
+    # Documents (RAG)
+    "DocumentChunk",
+    # Monitoring
+    "InteractionLog",
     # Chat (objet métier, pas ORM)
     "Chat",
 ]

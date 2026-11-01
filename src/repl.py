@@ -48,6 +48,16 @@ class TerminalREPL:
         self.console = console or Console(theme=THEME)
         self.app.chat_engine.confirm_tool = self.confirm_tool
         self.app.chat_engine.on_tool_call = self.log_tool_call
+        self.app.on_task_result = self.print_task_result
+
+    def print_task_result(self, task, response, error) -> None:
+        """Affiche le résultat d'une tâche planifiée exécutée en arrière-plan (thread du runner)."""
+        label = f"[Tâche planifiée] {task.prompt}"
+        if error is not None:
+            self.console.print(f"\n[hack.error]\\[!] {escape(label)} : échec ({escape(str(error))})[/]")
+        else:
+            self.console.print(f"\n[hack.bright]{escape(label)}[/]\n[hack]{escape(response or '(réponse vide)')}[/]")
+        self.console.print("[hack.dim]> réponse enregistrée dans un nouveau chat.[/]")
 
     @staticmethod
     def format_tool_call(name: str, arguments: dict, max_value_len: int = 40) -> str:
