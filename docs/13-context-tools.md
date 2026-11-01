@@ -182,6 +182,11 @@ Le tool :
 4. envoie le contenu dans ce canal ;
 5. transforme la réponse en `ToolResult`.
 
+Les modèles qui ne produisent pas de `tool_calls` natifs peuvent renvoyer les
+arguments dans un bloc JSON. SensAI reconnaît ce format et l'exécute comme un
+appel d'outil ; l'identifiant Discord est récupéré uniquement s'il est
+explicitement présent dans la demande utilisateur.
+
 Le token ne doit jamais être placé directement dans le fichier Python.
 
 ---

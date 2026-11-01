@@ -3,7 +3,9 @@ Module chat.py
 Contient la logique de construction et d'exécution d'une requête de chat vers un LLM.
 Pour une documentation détaillée, voir chat.md.
 """
+import json
 import logging
+import re
 from typing import Literal, Optional, Union
 
 from src.galerelm.models.message import Message, MessageList, ToolCalls
@@ -110,7 +112,6 @@ class Chat:
             token = msg_chunk.get("content", "")
             if token:
                 full_response.append(token)
-                yield token
 
             chunk_tools = msg_chunk.get("tool_calls")
             if chunk_tools:
@@ -124,14 +125,114 @@ class Chat:
                 final_chunk["message"] = {}
             final_chunk["message"]["role"] = "assistant"
             final_chunk["message"]["content"] = "".join(full_response)
+            textual_tool_call = None
             if accumulated_tool_calls:
                 final_chunk["message"]["tool_calls"] = accumulated_tool_calls
+            else:
+                textual_tool_call = self._parse_textual_tool_call(final_chunk["message"]["content"])
+                if textual_tool_call:
+                    final_chunk["message"]["tool_calls"] = [textual_tool_call]
+                    final_chunk["message"]["content"] = ""
+            if textual_tool_call is None and full_response:
+                yield "".join(full_response)
             self.last_response = ChatResponse.from_format(final_chunk)
             logger.info(
                 f"[Chat] Génération terminée. "
                 f"(Tokens: {self.last_response.eval_count}, "
                 f"Durée: {self.last_response.eval_duration / 1e9:.2f}s)"
             )
+
+    def _parse_textual_tool_call(self, content: str) -> Optional[dict]:
+        """Convertit un appel JSON produit en texte par les modèles sans tool-calling natif."""
+        candidate = content.strip()
+        fenced = re.search(r"```(?:json)?\s*(.*?)\s*```", candidate, re.IGNORECASE | re.DOTALL)
+        if fenced:
+            candidate = fenced.group(1).strip()
+        try:
+            payload = json.loads(candidate)
+        except json.JSONDecodeError:
+            payload = None
+
+        if isinstance(payload, dict) and isinstance(payload.get("tool_calls"), list):
+            payload = payload["tool_calls"][0] if payload["tool_calls"] else None
+        elif isinstance(payload, dict) and isinstance(payload.get("tool_call"), dict):
+            payload = payload["tool_call"]
+
+        if isinstance(payload, dict) and isinstance(payload.get("function"), dict):
+            payload = payload["function"]
+
+        if isinstance(payload, dict) and isinstance(payload.get("arguments"), dict):
+            name = payload.get("name") or payload.get("tool")
+            arguments = payload["arguments"]
+        elif isinstance(payload, dict):
+            name = None
+            arguments = payload
+        else:
+            name, arguments = self._infer_explicit_tool_call()
+            if name is None:
+                return None
+
+        if name:
+            if not isinstance(name, str) or not any(
+                tool.tool_function and tool.tool_function.name == name
+                for tool in self.tools
+            ):
+                return None
+        else:
+            candidates = [
+                tool.tool_function
+                for tool in self.tools
+                if tool.tool_function
+                and isinstance(tool.tool_function.parameters, dict)
+                and set(arguments).issubset(tool.tool_function.parameters.get("properties", {}))
+            ]
+            if len(candidates) == 1:
+                name = candidates[0].name
+            else:
+                name, arguments = self._infer_explicit_tool_call()
+                if name is None:
+                    return None
+
+        definition = next(
+            (tool.tool_function for tool in self.tools if tool.tool_function and tool.tool_function.name == name),
+            None,
+        )
+        if definition is None:
+            return None
+        required = definition.parameters.get("required", [])
+        if name == "discord" and "recipient" in required and "recipient" not in arguments:
+            user_messages = [message.content for message in self.messages if message.role == "user"]
+            recipient_ids = re.findall(r"\b\d{17,20}\b", "\n".join(user_messages))
+            if len(recipient_ids) == 1:
+                arguments = {**arguments, "recipient": recipient_ids[0]}
+        if any(field not in arguments for field in required):
+            return None
+        return {"function": {"name": name, "arguments": arguments}}
+
+    def _infer_explicit_tool_call(self) -> tuple[Optional[str], dict]:
+        """Builds a call only when the latest user request explicitly supplies all inputs."""
+        if self.messages and self.messages[-1].role == "tool":
+            return None, {}
+        user_messages = [message.content for message in self.messages if message.role == "user"]
+        request = user_messages[-1] if user_messages else ""
+        if not re.search(r"\bdiscord\b", request, re.IGNORECASE):
+            return None, {}
+
+        discord = next(
+            (tool.tool_function for tool in self.tools if tool.tool_function and tool.tool_function.name == "discord"),
+            None,
+        )
+        if discord is None:
+            return None, {}
+
+        recipient_ids = re.findall(r"\b\d{17,20}\b", request)
+        content_match = re.search(r"""["“](.+?)["”]""", request, re.DOTALL)
+        if len(recipient_ids) != 1 or content_match is None:
+            return None, {}
+        return "discord", {
+            "recipient": recipient_ids[0],
+            "content": content_match.group(1),
+        }
 
     def ask(self, content: str, images: list[str] = None, tool_calls: list[ToolCalls] = None, think: str = None):
         """Raccourci : ajoute le prompt utilisateur, streame, et ajoute la réponse assistant."""

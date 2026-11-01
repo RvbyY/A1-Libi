@@ -2,6 +2,7 @@
 Modèle Message et collection MessageList.
 Représente un message dans une conversation (user, assistant, system, tool).
 """
+import json
 import logging
 from typing import Optional
 from collections import UserList
@@ -39,10 +40,16 @@ class ToolCallsFunction(Base):
     def from_format(cls, data: dict):
         if data is None:
             return None
+        arguments = data.get("arguments", {})
+        if isinstance(arguments, str):
+            try:
+                arguments = json.loads(arguments)
+            except json.JSONDecodeError:
+                arguments = {}
         return cls(
             name=data.get("name", ""),
             description=data.get("description", ""),
-            arguments=data.get("arguments", {})
+            arguments=arguments if isinstance(arguments, dict) else {}
         )
 
 
