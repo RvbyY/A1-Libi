@@ -17,6 +17,7 @@ with gr.Blocks(title="SensAI — Visualiseur Temps Réel", fill_width=True) as f
         inspector_md,
         new_btn,
         chats,
+        use_simplifier,
         use_guardrail,
         use_anti_hallucination,
     ) = Views.main_page(current_email, current_chat)
@@ -44,12 +45,12 @@ with gr.Blocks(title="SensAI — Visualiseur Temps Réel", fill_width=True) as f
     # Envoi de message ou commande avec mise à jour temps réel du graphe SVG et de l'inspecteur
     msg_input.submit(
         utils.controller.stream_message,
-        inputs=[msg_input, chatbot, current_email, current_chat, use_guardrail, use_anti_hallucination],
+        inputs=[msg_input, chatbot, current_email, current_chat, use_simplifier, use_guardrail, use_anti_hallucination],
         outputs=[msg_input, chatbot, graph_html, inspector_md],
     )
     send_btn.click(
         utils.controller.stream_message,
-        inputs=[msg_input, chatbot, current_email, current_chat, use_guardrail, use_anti_hallucination],
+        inputs=[msg_input, chatbot, current_email, current_chat, use_simplifier, use_guardrail, use_anti_hallucination],
         outputs=[msg_input, chatbot, graph_html, inspector_md],
     )
 
