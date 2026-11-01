@@ -190,6 +190,40 @@ def test_wrapped_textual_tool_call_is_executed_after_tool_result():
     assert app.chat("Send a Discord message.") == "The message was sent."
 
 
+def test_discord_reference_uses_latest_assistant_response():
+    from src.tools import Discord
+
+    class FakeDiscordAPI:
+        def __init__(self):
+            self.messages = []
+
+        def post(self, endpoint, json=None, **kwargs):
+            if endpoint == "users/@me/channels":
+                return {"id": "channel"}
+            self.messages.append(json["content"])
+            return {"id": "message"}
+
+    discord_api = FakeDiscordAPI()
+    discord = Discord(token="fake-token", api_client=discord_api)
+    fake = ScriptedOllama(
+        text_chunk("I need to use the Discord tool."),
+        text_chunk("The referenced response was sent."),
+        text_chunk("The referenced response was sent."),
+    )
+    app = SensAI(db_url="sqlite:///:memory:", tool_registry=ToolRegistry([discord]))
+    app.api = app.chat_engine.api = fake
+    app.load_or_create_profile(email="discord-reference@test.com", name="Discord")
+    app.chat_engine.confirm_tool = lambda name, arguments: True
+
+    app.chat("Remember this neutral response.")
+    app.chat(
+        "Use the discord tool to send your last response message "
+        "to user ID 374505575683457044."
+    )
+
+    assert discord_api.messages == ["I need to use the Discord tool."]
+
+
 def test_tool_rounds_are_bounded():
     fake = ScriptedOllama(tool_call_chunk(), repeat_last=True)  # le modèle rappelle l'outil sans fin
     app, tool = make_app(fake)

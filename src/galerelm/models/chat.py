@@ -200,14 +200,51 @@ class Chat:
         if definition is None:
             return None
         required = definition.parameters.get("required", [])
-        if name == "discord" and "recipient" in required and "recipient" not in arguments:
-            user_messages = [message.content for message in self.messages if message.role == "user"]
-            recipient_ids = re.findall(r"\b\d{17,20}\b", "\n".join(user_messages))
-            if len(recipient_ids) == 1:
-                arguments = {**arguments, "recipient": recipient_ids[0]}
+        if name == "discord":
+            arguments = self._resolve_discord_arguments(arguments)
         if any(field not in arguments for field in required):
             return None
         return {"function": {"name": name, "arguments": arguments}}
+
+    def _resolve_discord_arguments(self, arguments: dict) -> dict:
+        """Resolve recipient and explicit conversation references before sending."""
+        resolved = dict(arguments)
+        user_messages = [message.content for message in self.messages if message.role == "user"]
+        request = user_messages[-1] if user_messages else ""
+
+        if "recipient" not in resolved:
+            recipient_ids = re.findall(r"\b\d{17,20}\b", request)
+            if len(recipient_ids) == 1:
+                resolved["recipient"] = recipient_ids[0]
+
+        content = str(resolved.get("content", "")).strip()
+        if not content or self._is_previous_response_reference(content) or (
+            self._is_previous_response_reference(request) and not self._has_quoted_content(request)
+        ):
+            previous_response = self._latest_assistant_content()
+            if previous_response:
+                resolved["content"] = previous_response
+        return resolved
+
+    @staticmethod
+    def _is_previous_response_reference(text: str) -> bool:
+        return bool(re.search(
+            r"\b(?:last|previous|preceding|latest)\s+"
+            r"(?:assistant\s+)?(?:response|message|reply|answer)\b"
+            r"|\b(?:response|message|reply|answer)\s+(?:above|before)\b",
+            text,
+            re.IGNORECASE,
+        ))
+
+    @staticmethod
+    def _has_quoted_content(text: str) -> bool:
+        return re.search(r"""["“].+?["”]""", text, re.DOTALL) is not None
+
+    def _latest_assistant_content(self) -> str:
+        for message in reversed(self.messages):
+            if message.role == "assistant" and message.content.strip():
+                return message.content.strip()
+        return ""
 
     def _infer_explicit_tool_call(self) -> tuple[Optional[str], dict]:
         """Builds a call only when the latest user request explicitly supplies all inputs."""
@@ -227,11 +264,17 @@ class Chat:
 
         recipient_ids = re.findall(r"\b\d{17,20}\b", request)
         content_match = re.search(r"""["“](.+?)["”]""", request, re.DOTALL)
-        if len(recipient_ids) != 1 or content_match is None:
+        if len(recipient_ids) != 1:
+            return None, {}
+        if content_match is None:
+            content = self._latest_assistant_content() if self._is_previous_response_reference(request) else ""
+        else:
+            content = content_match.group(1)
+        if not content:
             return None, {}
         return "discord", {
             "recipient": recipient_ids[0],
-            "content": content_match.group(1),
+            "content": content,
         }
 
     def ask(self, content: str, images: list[str] = None, tool_calls: list[ToolCalls] = None, think: str = None):
