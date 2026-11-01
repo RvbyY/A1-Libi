@@ -53,6 +53,35 @@
 
 ---
 
+## Ce qu'il reste à faire
+
+Objectif : passer d'un RAG sur les conversations à un RAG sur des **documents locaux**.
+
+1. **Lire les documents.**
+   - Créer `src/galerelm/ingest.py` avec une classe `DocumentIngestor`.
+   - Accepter un fichier ou un dossier, et lire les fichiers `.md` et `.txt`.
+   - Les PDF demandent une dépendance (`pypdf`) à ajouter dans `requirements.txt`.
+2. **Découper en fragments.**
+   - Fragments d'environ 500 caractères, avec un chevauchement d'environ 50 caractères.
+   - Couper de préférence sur les fins de paragraphe ou de phrase.
+3. **Vectoriser et stocker.**
+   - Ajouter un modèle ORM `DocumentChunk` : source, position, contenu, vecteur.
+   - L'exporter dans `src/galerelm/models/__init__.py` pour que la table soit créée.
+   - Réutiliser `EmbeddingService.embed_batch` (`src/galerelm/rag.py`).
+4. **Rechercher et injecter.**
+   - Ajouter une recherche par similarité cosinus sur les fragments, comme `RAGManager.search`.
+   - Dans `PromptBuilder`, ajouter un bloc « Extraits de documents » qui cite la source de chaque fragment.
+5. **Donner une commande.**
+   - Créer `/ingest <chemin>` dans `src/commands/`, qui affiche le nombre de fragments ajoutés.
+6. **Tester.**
+   - Ingestion d'un dossier temporaire, taille et chevauchement des fragments.
+   - Recherche avec un faux client d'embedding, et injection dans le prompt avec la source.
+
+**Quand le considérer comme fait :** `/ingest docs/` puis une question sur la doc donne une réponse
+appuyée sur les bons extraits, cités avec leur fichier.
+
+---
+
 ## Preuves
 
 ### Code

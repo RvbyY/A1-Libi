@@ -72,6 +72,34 @@
 
 ---
 
+## Ce qu'il reste à faire
+
+Objectif : parler le **protocole MCP**, pour utiliser un outil MCP existant et exposer nos propres outils en MCP.
+La checklist précise que la feature sera testée avec un outil MCP existant **et** avec le nôtre.
+
+1. **Client MCP.**
+   - Créer `src/tools/mcp/client.py` : JSON-RPC 2.0 sur l'entrée et la sortie standard d'un sous-processus.
+   - Implémenter `initialize`, `tools/list` et `tools/call`.
+2. **Adapter les outils distants.**
+   - Créer `McpTool(ToolsInterface)` : le nom, la description et l'`inputSchema` de l'outil MCP
+     deviennent `name`, `description` et `parameters`.
+   - `execute` appelle `tools/call` et renvoie un `ToolResult`.
+   - Laisser choisir `requires_confirmation` par serveur.
+3. **Configurer les serveurs.**
+   - Ajouter une section `mcp_servers` dans `config.yaml` : commande et arguments de chaque serveur.
+   - Au démarrage, lister leurs outils et les ajouter au `ToolRegistry`.
+4. **Notre propre serveur MCP.**
+   - Créer `src/tools/mcp/server.py`, qui expose nos tools (au moins `tools_selftest`) en MCP.
+5. **Tester.**
+   - Un faux serveur MCP (petit script Python) : découverte des outils, appel, erreur, arrêt du sous-processus.
+6. **Démontrer.**
+   - Brancher un serveur MCP public (par exemple le serveur « filesystem » de référence), puis le nôtre.
+
+**Quand la limite sera levée :** un outil d'un serveur MCP existant apparaît dans le prompt
+et s'exécute depuis le chat, comme nos propres outils.
+
+---
+
 ## Preuves
 
 ### Code

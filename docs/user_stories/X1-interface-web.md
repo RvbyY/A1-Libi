@@ -51,6 +51,27 @@
 
 ---
 
+## Ce qu'il reste à faire
+
+Objectif : compléter l'interface avec la consommation de tokens et le changement d'agent.
+
+1. **Afficher les tokens et le contexte.**
+   - Les compteurs existent déjà : `prompt_eval_count` et `eval_count` dans chaque réponse d'Ollama.
+   - Les afficher sous le chat après chaque réponse, avec le remplissage du contexte (messages / `CONTEXT_LIMIT`).
+2. **Changer d'agent.**
+   - Dépend de la feature A5 (personas), pas encore faite.
+   - Déclarer plusieurs agents dans `config.yaml` : nom, ton, instructions.
+   - Ajouter une liste déroulante qui change l'agent pour les messages suivants, **sans** effacer l'historique.
+3. **Confirmer les actions critiques.**
+   - Ajouter une boîte de confirmation pour les outils sensibles, qui sont aujourd'hui toujours refusés dans la webapp.
+4. **Tester.**
+   - Les méthodes de `WebAppController` : compteurs renvoyés après un message, changement d'agent.
+
+**Quand la limite sera levée :** l'utilisateur voit les tokens consommés à chaque réponse
+et change d'agent en cours de conversation sans perdre l'historique.
+
+---
+
 ## Preuves
 
 ### Code

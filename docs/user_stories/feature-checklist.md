@@ -47,6 +47,7 @@ Real-world examples: Claude deciding to use its calculator when you ask a math q
 agent calling a calendar API to check availability
 This will be tested with both your own and a preexisting MCP tool.
   - Statut SensAI : Fait, avec une limite. L'appel d'outils fonctionne de bout en bout (requête structurée, exécution, résultat renvoyé au modèle, relance). Il manque un client MCP pour brancher un outil MCP existant, ce que demande le test. Preuves et user stories : [T1-appel-outils.md](T1-appel-outils.md).
+  - Reste à faire : client MCP (JSON-RPC sur stdio : initialize, tools/list, tools/call), adaptateur `McpTool`, serveurs déclarés dans `config.yaml`, et notre propre serveur MCP. Détail dans la section « Ce qu'il reste à faire » de [T1-appel-outils.md](T1-appel-outils.md).
 - [ ] [T2] Sandboxed Code Execution
   - Give the agent a sandboxed runtime (Docker or isolated subprocess) where it runs code it generated, captures stdout and tracebacks, and feeds them back to fix its own errors.
 Real-world examples: ChatGPT Code Interpreter executing Python to analyze a CSV. Devin generating,
@@ -73,6 +74,7 @@ retrieve by semantic similarity, and inject the top chunks into context. The can
 knowledge it was not trained on.
 Real-world examples: A legal assistant answering from a contract database. Google's NotebookLM enabling conversation with uploaded documents. A support chatbot drawing from product documentation.
   - Statut SensAI : Partiel. Vectorisation, stockage et recherche sémantique sont faits sur les conversations. Il manque l'ingestion de documents locaux et leur découpage en fragments. Preuves et user stories : [R1-rag-basique.md](R1-rag-basique.md).
+  - Reste à faire : lecture de fichiers locaux, découpage en fragments, table `DocumentChunk` vectorisée, bloc « Extraits de documents » dans le prompt et commande `/ingest`. Détail dans la section « Ce qu'il reste à faire » de [R1-rag-basique.md](R1-rag-basique.md).
 - [ ] [R2] Advanced RAG
   - Extends R1 with reranking of retrieved chunks, metadata filtering, and per-chunk relevance scoring to drop
 near-misses before they reach the context.
@@ -129,6 +131,7 @@ Real-world examples: RAGAS for evaluating RAG pipelines. The internal benchmarks
 to validate their changes before deployment. Princeton's FActScore evaluating response factuality. RAG
 systems comparing responses to retrieved sources to detect discrepancies
   - Statut SensAI : Partiel. Un LLM juge détecte les réponses non fondées et les fait régénérer. Il manque les scores (pertinence, cohérence) utilisables pour comparer des versions. Preuves et user stories : [EV1-evaluation-automatique.md](EV1-evaluation-automatique.md).
+  - Reste à faire : scores du juge (pertinence, cohérence, fidélité), réponse « non vérifiée » si le juge échoue, table des scores et script de comparaison sur un jeu de questions. Détail dans la section « Ce qu'il reste à faire » de [EV1-evaluation-automatique.md](EV1-evaluation-automatique.md).
 - [ ] [EV2] Content & Privacy Guardrails
   - Interceptors on input and output. On input: detect and block unsafe or out-of-scope prompts before
 they reach the model. On output: detect PII or other inapropriate content, and anonymize or refuse, per
@@ -137,11 +140,13 @@ Real-world examples: OpenAI Moderation API content filters. Nvidia NeMo Guardrai
 that refuses to answer questions about individual colleagues' salaries. A medical assistant anonymizing
 patient data before sending it to the model.
   - Statut SensAI : Partiel. Le filtre en entrée est fait (classification et blocage). Il manque le filtre en sortie (détection et anonymisation des données personnelles). Preuves et user stories : [EV2-guardrails.md](EV2-guardrails.md).
+  - Reste à faire : filtre en sortie qui anonymise ou refuse (email, téléphone, IBAN…), règles dans `config.yaml`, option `--guardrail`, et retrait des règles contradictoires du prompt. Détail dans la section « Ce qu'il reste à faire » de [EV2-guardrails.md](EV2-guardrails.md).
 - [ ] [EV3] Logging & Monitoring Dashboard
   - Structured logging of every interaction — prompt sent, response, tools called, latency, token counts —
 feeding a simple metrics view (call volume, latency, error rate, drift over time).
 Real-world examples: Langfuse, LangSmith, Helicone — all LLM observability tools are built on this principle. A dashboard that reveals a prompt modified yesterday has doubled average latency.
   - Statut SensAI : Partiel. Les étapes, la taille du prompt, les tokens et la durée des outils sont suivis, avec un visualiseur en direct. Il manque la journalisation structurée persistante et la vue des métriques dans le temps. Preuves et user stories : [EV3-monitoring.md](EV3-monitoring.md).
+  - Reste à faire : table `InteractionLog` remplie à chaque tour, calcul des métriques (volume, latence, erreurs, tokens), onglet Monitoring dans la webapp et commande `/stats`. Détail dans la section « Ce qu'il reste à faire » de [EV3-monitoring.md](EV3-monitoring.md).
 - [ ] [EV4] Adversarial Testing
   - A test suite that attacks your own agent: jailbreak attempts, prompt injections, malformed inputs. Documents where it breaks and where it holds.
 Real-world examples: Anthropic, OpenAI, and Google red teams testing their models before deployment.
@@ -151,6 +156,7 @@ Public adversarial benchmarks (AdvBench, HarmBench)
   - A decoupled web frontend over the CLI backend: message input, streaming conversation display, live
 token/context usage, basic agent switching, configuration... The backend logic stays unchanged.
   - Statut SensAI : Fait, avec une limite. Frontend Gradio découplé, réponse en streaming, configuration du pipeline. Il manque le changement d'agent et l'affichage des tokens consommés. Preuves et user stories : [X1-interface-web.md](X1-interface-web.md).
+  - Reste à faire : affichage des tokens et du contexte après chaque réponse, changement d'agent (dépend de A5), boîte de confirmation pour les outils sensibles. Détail dans la section « Ce qu'il reste à faire » de [X1-interface-web.md](X1-interface-web.md).
 - [ ] [X2] Branching - Resume & Interrupt
   - Resume: edit a past message and fork an alternative branch, preserving the original history.
 Interrupt: abort a generation mid-stream and redirect it with new instructions without waiting for it to
@@ -174,3 +180,4 @@ Daily summaries, weekly reports, continuous monitoring.
 Real-world examples: A monitoring agent sending a news summary every morning. A system monitoring
 agent checking status every hour and alerting on anomalies.
   - Statut SensAI : Partiel. Les tâches (ponctuelles et récurrentes) sont créées et enregistrées, et le `TaskRunner` sait les exécuter, mais il n'est démarré ni par la CLI ni par la webapp. Preuves et user stories : [X5-planification.md](X5-planification.md).
+  - Reste à faire : démarrer le `TaskRunner` dans un thread, lui donner sa propre session et un chat « Tâches planifiées », et prévenir l'utilisateur du résultat. Détail dans la section « Ce qu'il reste à faire » de [X5-planification.md](X5-planification.md).

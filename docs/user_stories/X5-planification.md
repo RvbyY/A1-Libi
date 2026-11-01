@@ -56,6 +56,31 @@ Fiche technique détaillée : [Scheduled AI Tasks](../features/scheduled-tasks.m
 
 ---
 
+## Ce qu'il reste à faire
+
+Objectif : que les tâches programmées **s'exécutent vraiment**, sans intervention.
+
+1. **Démarrer le runner.**
+   - Lancer `TaskRunner.run_forever()` dans un thread en arrière-plan (`daemon=True`) au démarrage
+     de la CLI (`src/main.py`) et de la webapp.
+   - Ajouter une option `--no-scheduler` pour le désactiver.
+2. **Isoler l'exécution.**
+   - Aujourd'hui, `TaskRunner` reçoit `executor=self.chat` : il utiliserait la même session SQLAlchemy
+     et le même chat que le terminal, depuis un autre thread.
+   - Donner au runner sa propre session, et un chat dédié « Tâches planifiées » par profil.
+3. **Prévenir l'utilisateur.**
+   - Enregistrer le résultat dans ce chat dédié.
+   - En CLI, l'afficher sans casser la ligne en cours de saisie.
+   - Dans la webapp, le faire apparaître dans la liste des conversations.
+4. **Tester.**
+   - Le runner exécute une tâche due avec un faux exécuteur, reprogramme une tâche récurrente,
+     marque une tâche en échec, et s'arrête proprement.
+
+**Quand le considérer comme fait :** `/schedule in 1m dis bonjour` produit la réponse une minute plus tard,
+sans action de l'utilisateur, dans le chat « Tâches planifiées ».
+
+---
+
 ## Preuves
 
 ### Code

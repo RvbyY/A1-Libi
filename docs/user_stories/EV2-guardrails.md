@@ -53,6 +53,33 @@
 
 ---
 
+## Ce qu'il reste à faire
+
+Objectif : ajouter le **filtre en sortie**, et rendre les deux filtres configurables.
+
+1. **Détecter les données personnelles.**
+   - Créer `src/galerelm/output_guardrail.py` avec une classe `OutputGuardrail`.
+   - Détection par expressions régulières : email, téléphone, IBAN, numéro de carte bancaire, numéro de sécurité sociale.
+2. **Anonymiser ou refuser.**
+   - Mode `anonymize` : remplacer chaque donnée par une étiquette (`[EMAIL]`, `[TELEPHONE]`…).
+   - Mode `refuse` : remplacer toute la réponse par un message de refus.
+3. **Brancher le filtre.**
+   - L'appliquer dans `ChatEngine` avant l'affichage **et** avant la sauvegarde en base.
+   - Le streaming envoie des morceaux de mots : il faut filtrer par phrase (tampon jusqu'à la ponctuation),
+     ou désactiver le streaming quand le filtre est actif.
+4. **Rendre les règles configurables.**
+   - Ajouter une section `guardrails` dans `config.yaml` : catégories à anonymiser, mode, politique d'entrée.
+   - Ajouter `--guardrail` à la CLI : aujourd'hui, le filtre d'entrée ne s'active que dans la webapp.
+5. **Retirer la contradiction du prompt.**
+   - Supprimer de `DEFAULT_SYSTEM_RULES` les règles qui demandent de répondre aux questions illégales.
+6. **Tester.**
+   - Chaque catégorie de données, les deux modes, le filtrage en streaming, la configuration YAML.
+
+**Quand le considérer comme fait :** une réponse contenant un email ou un téléphone est affichée
+et enregistrée anonymisée, selon les règles de `config.yaml`.
+
+---
+
 ## Preuves
 
 ### Code

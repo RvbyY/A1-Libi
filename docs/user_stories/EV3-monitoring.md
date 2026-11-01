@@ -52,6 +52,28 @@
 
 ---
 
+## Ce qu'il reste à faire
+
+Objectif : **conserver** chaque interaction et en tirer une **vue des métriques** dans le temps.
+
+1. **Journaliser chaque tour.**
+   - Ajouter une table `InteractionLog` : date, profil, modèle, prompt système (ou son empreinte),
+     question, réponse, outils appelés, latence totale, `prompt_eval_count`, `eval_count`, erreur éventuelle.
+   - L'écrire à la fin de `ChatEngine.stream_turn`, et aussi en cas d'exception.
+   - Les appels d'outils sont déjà mesurés par `ToolExecutor` (`on_call`) : les rattacher au tour.
+2. **Calculer les métriques.**
+   - Nombre d'appels par jour, latence moyenne et p95, taux d'erreur, tokens moyens, par modèle.
+3. **Afficher la vue.**
+   - Ajouter un onglet « Monitoring » dans la webapp, avec des graphiques Gradio (`gr.LinePlot`) dans le temps.
+   - Ajouter une commande `/stats` dans la CLI pour un résumé texte.
+4. **Tester.**
+   - Écriture d'un log par tour (succès et erreur), calcul des métriques sur des données connues.
+
+**Quand le considérer comme fait :** après quelques conversations, l'onglet Monitoring montre
+le volume, la latence et le taux d'erreur par jour, et `/stats` donne les mêmes chiffres.
+
+---
+
 ## Preuves
 
 ### Code

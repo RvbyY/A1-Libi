@@ -55,6 +55,33 @@
 
 ---
 
+## Ce qu'il reste à faire
+
+Objectif : produire des **scores** comparables entre versions, en plus de la détection d'hallucinations.
+
+1. **Enrichir le juge.**
+   - Dans `HALLUCINATION_GRADER_TEMPLATE` (`src/galerelm/models/prompt.py`), demander en JSON :
+     `relevance`, `coherence` et `faithfulness` (de 0 à 5), plus la liste `unsupported_claims`.
+   - Ajouter ces champs à `HallucinationGrade` (`src/galerelm/graph.py`).
+2. **Ne plus accepter en silence.**
+   - Aujourd'hui, un juge en erreur ou un JSON illisible valide la réponse.
+   - Marquer plutôt la réponse « non vérifiée » et l'afficher comme telle.
+3. **Signaler les affirmations douteuses.**
+   - Afficher les `unsupported_claims` sous la réponse quand la limite de régénérations est atteinte.
+4. **Conserver les scores.**
+   - Ajouter une table `EvaluationResult` : date, modèle, prompt, question, réponse, scores.
+5. **Comparer des versions.**
+   - Créer un jeu de questions de référence (`eval/dataset.jsonl`).
+   - Créer un script `python -m src.evaluation run --model <modèle>` qui rejoue le jeu et affiche les scores moyens.
+   - Deux exécutions (deux modèles, ou deux prompts) donnent un tableau comparatif.
+6. **Tester.**
+   - Analyse des scores, cas « non vérifié », calcul des moyennes avec un faux juge.
+
+**Quand le considérer comme fait :** le script produit un rapport de scores pour deux modèles,
+et une réponse inventée est signalée à l'utilisateur.
+
+---
+
 ## Preuves
 
 ### Code
