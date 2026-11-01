@@ -10,11 +10,12 @@ class Views:
             new_btn = gr.Button("➕ Nouvelle conversation", variant="secondary")
             chats = gr.Radio(label="Historique", choices=[])
             gr.HTML("<hr style='margin:12px 0;border-color:#334155;'/><h3>⚙️ Options du Graphe</h3>")
+            use_simplifier = gr.Checkbox(label="Activer la simplification du prompt", value=True)
             use_guardrail = gr.Checkbox(label="Activer IntentGuardrail", value=True)
             use_anti_hallucination = gr.Checkbox(
                 label="Activer Boucle Anti-Hallucination (StateGraph)", value=True
             )
-        return new_btn, chats, use_guardrail, use_anti_hallucination
+        return new_btn, chats, use_simplifier, use_guardrail, use_anti_hallucination
 
     @staticmethod
     def connexion_page():
@@ -58,7 +59,7 @@ class Views:
                     with gr.Accordion("🔍 Inspecteur Temps Réel (PromptBuilder & GraphState)", open=True):
                         inspector_md = gr.Markdown(value=utils.controller.build_inspector_markdown())
 
-            new_btn, chats, use_guardrail, use_anti_hallucination = Views.sidebar()
+            new_btn, chats, use_simplifier, use_guardrail, use_anti_hallucination = Views.sidebar()
 
         return (
             chat_page,
@@ -70,6 +71,7 @@ class Views:
             inspector_md,
             new_btn,
             chats,
+            use_simplifier,
             use_guardrail,
             use_anti_hallucination,
         )

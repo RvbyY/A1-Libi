@@ -1,8 +1,8 @@
-# 📘 Documentation SensAI
+# 📘 Documentation A1Libi
 
 Bienvenue.
 
-Cette documentation explique le projet **SensAI**.
+Cette documentation explique le projet **A1Libi**.
 
 Elle est écrite pour être **facile à lire**.
 
@@ -35,7 +35,7 @@ Lisez les pages dans l'ordre si vous découvrez le projet.
 
 | N° | Page | Ce que vous allez apprendre |
 |----|------|-----------------------------|
-| 1 | [Démarrage](01-demarrage.md) | Installer et lancer SensAI |
+| 1 | [Démarrage](01-demarrage.md) | Installer et lancer A1Libi |
 | 2 | [Architecture](02-architecture.md) | Comment le projet est organisé |
 | 3 | [Mémoire](03-memoire.md) | Comment l'IA se souvient |
 | 4 | [Modèles](04-modeles.md) | Les classes de données |
@@ -52,9 +52,9 @@ Lisez les pages dans l'ordre si vous découvrez le projet.
 
 ---
 
-## ⚡ SensAI en 5 lignes
+## ⚡ A1Libi en 5 lignes
 
-1. SensAI est un **framework** pour discuter avec une **IA locale**.
+1. A1Libi est un **framework** pour discuter avec une **IA locale**.
 2. L'IA tourne sur votre machine grâce à **Ollama**.
 3. Les conversations sont **sauvegardées** dans une base de données.
 4. L'IA a une **mémoire courte** (les derniers messages).

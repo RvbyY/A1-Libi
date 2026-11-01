@@ -1,6 +1,10 @@
-# Classification d'Intention (Guardrail)
+# 🛡️ 11. Classification d'intention (Guardrail)
 
-Le module de classification d'intention (`src/galerelm/intent_classifier.py`) agit comme un filtre de sécurité intelligent (Guardrail) avant que le framework SensAI ne traite la demande de l'utilisateur.
+[⬅️ Retour au sommaire](README.md)
+
+---
+
+Le module de classification d'intention (`src/galerelm/intent_classifier.py`) agit comme un filtre de sécurité intelligent (Guardrail) avant que le framework A1Libi ne traite la demande de l'utilisateur.
 
 ## 🎯 Objectif
 L'objectif est d'analyser l'intention réelle derrière le message de l'utilisateur afin de bloquer les requêtes malveillantes, dangereuses ou illégales avant même qu'elles n'atteignent le contexte ou la mémoire du LLM principal.
@@ -18,7 +22,7 @@ Le système repose sur la classe `IntentGuardrail`. Lorsqu'un utilisateur envoie
 
 ## 🏗️ Architecture et Intégration
 
-Le fichier `src/galerelm/intent_classifier.py` s'intègre nativement avec l'écosystème SensAI :
+Le fichier `src/galerelm/intent_classifier.py` s'intègre nativement avec l'écosystème A1Libi :
 - Il utilise `RapideAPI` pour exécuter la requête via HTTP.
 - Il utilise la classe `Chat` (mode streaming interne intercepté) pour générer le JSON.
 - Il utilise les paramètres de `src/config.py` (comme le `DEFAULT_MODEL`) avec une `temperature` fixée à `0.0` pour garantir des réponses déterministes.
@@ -52,3 +56,7 @@ llm, context = self._setup_chat_environment(session, email, prompt)
 Contrairement à la gestion par "Persona" où le modèle principal reçoit directement la requête malveillante, le Guardrail isole l'évaluation de l'intention. Cela garantit que :
 - Les requêtes dangereuses ne polluent pas la mémoire long-terme (RAG).
 - Le LLM principal n'est pas exposé à des tentatives de "Jailbreak".
+
+---
+
+[⬅️ Page précédente : Problèmes connus](10-problemes-connus.md) · [➡️ Page suivante : Infrastructure](12-infrastructure.md)

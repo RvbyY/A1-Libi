@@ -1,55 +1,72 @@
-# SensAI
+<p align="center">
+  <img src="docs/assets/A1-Libi.svg" width="120" alt="Logo A1Libi" />
+</p>
 
-Local AI assistant using Ollama.
+<h1 align="center">A1Libi</h1>
 
-## Requirements
+<p align="center">
+  <b>Assistant IA local, avec une mémoire courte et une mémoire longue.</b><br/>
+  Propulsé par le framework GalèreLM · projet <a href="https://www.epitech.eu/">Epitech</a>
+</p>
 
-- Python 3.10+
-- Ollama
-- Internet connection for the first model download
+<p align="center">
+  <img src="https://img.shields.io/badge/Python-3.12-3776AB?style=flat-square&logo=python&logoColor=white" />
+  <img src="https://img.shields.io/badge/Ollama-IA%20locale-000000?style=flat-square&logo=ollama&logoColor=white" />
+  <img src="https://img.shields.io/badge/Gradio-interface%20web-F97316?style=flat-square&logo=gradio&logoColor=white" />
+  <img src="https://img.shields.io/badge/Docker-prêt-2496ED?style=flat-square&logo=docker&logoColor=white" />
+  <img src="https://img.shields.io/badge/licence-MIT-4c1?style=flat-square" />
+</p>
 
-## Setup
+---
+
+<p align="center">
+  <img src="docs/assets/banner.svg" width="100%" alt="Premiers pas" />
+</p>
+
+Il faut seulement [Docker](https://docs.docker.com/get-docker/).
+
+## Run with Docker
+
+Prepare the Docker images and the environment:
 
 ```bash
-./setup.sh```
-
-## Run
-
-Start Ollama and pull the model (in a first terminal):
-
-```bash
-./script/backend.sh
+./scripts/A1Libi -setup
 ```
 
-Then start the CLI chatbot (in a second terminal):
+Start Ollama, download the configured models, and launch the web application:
 
 ```bash
-PYTHONPATH=. .venv/bin/python src/main.py
+./scripts/A1Libi -run
+```
+
+Open **http://localhost:7860** in your browser. Follow the startup logs with:
+
+```bash
+./scripts/A1Libi -logs
 ```
 
 ### Choosing the model
 
-The model can be selected without touching the code, either on the command line:
+For the Docker setup, edit `HF_MODEL` and `EMBED_MODEL` in `.env`, then restart the
+services:
 
 ```bash
-PYTHONPATH=. .venv/bin/python src/main.py --model qwen2.5:7b
+./scripts/A1Libi -stop
+./scripts/A1Libi -run
 ```
 
-or in a YAML configuration file (see [config.example.yaml](config.example.yaml)):
+To pass a one-off model override to the CLI container:
 
 ```bash
-cp config.example.yaml config.yaml
-PYTHONPATH=. .venv/bin/python src/main.py                         # ./config.yaml is loaded automatically
-PYTHONPATH=. .venv/bin/python src/main.py --config other.yaml     # or pass a file explicitly
+docker compose run --rm app python src/main.py --model qwen2.5:7b
 ```
 
-Priority: CLI arguments > YAML file > environment variables (`.env`) > defaults.
-Run `src/main.py --help` for every option (`--host`, `--embed-model`, `--db`, `--skip-check`).
+Run `docker compose run --rm app python src/main.py --help` for every option.
 
 ### Anti-hallucination loop
 
 ```bash
-PYTHONPATH=. .venv/bin/python src/main.py --anti-hallucination --max-retries 3
+docker compose run --rm app python src/main.py --anti-hallucination --max-retries 3
 ```
 
 Each answer is checked by an LLM judge against the known facts (RAG memories, tool outputs) and regenerated
@@ -69,7 +86,16 @@ Before opening the chat, SensAI checks that Ollama answers and that the model is
 
 The same messages are shown if Ollama stops or times out during a conversation; the session keeps running.
 
-## User stories
+> The first launch downloads the AI models and can take several minutes.
 
-The user stories required by the project (at least two per implemented feature) are listed in
-[USER_STORIES.md](USER_STORIES.md), with one detailed page per feature in [docs/user_stories](docs/user_stories/README.md).
+---
+
+<p align="center">
+  <a href="docs/README.md">
+    <img src="docs/assets/banner-docs.svg" width="100%" alt="Ouvrir la documentation" />
+  </a>
+</p>
+
+---
+
+<p align="center">Licence <a href="LICENSE">MIT</a></p>

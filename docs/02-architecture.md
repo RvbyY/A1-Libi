@@ -49,13 +49,14 @@ flowchart TD
 ```
 SensAI/
 ├── .env                 → Réglages (modèle, adresse)
-├── setup.sh             → Installation
-├── script/
-│   ├── backend.sh       → Lancement d'Ollama
-│   └── frontend.sh      → Lancement de l'application web
+├── Dockerfile           → Image de l'application
+├── docker-compose.yaml  → Lancement avec Docker
+├── scripts/
+│   ├── A1Libi           → Installation et lancement avec Docker
+│   └── A1Libi_dev       → Installation et lancement sans Docker
 ├── docs/                → Cette documentation
 └── src/
-    ├── main.py          → Classe SensAI + point d'entrée
+    ├── main.py          → Classe A1Libi + point d'entrée
     ├── repl.py          → Terminal (CLI) : boucle, affichage, commandes
     ├── wrapper.md       → Liste des fonctions du wrapper
     ├── galerelm/
@@ -105,8 +106,8 @@ En étapes :
 
 1. Le message est **sauvegardé** dans la mémoire courte.
 2. Si la mémoire courte est **pleine**, les plus vieux messages partent en mémoire longue.
-3. SensAI **cherche** dans la mémoire longue les souvenirs liés à la question.
-4. SensAI **ajoute** ces souvenirs aux instructions.
+3. A1Libi **cherche** dans la mémoire longue les souvenirs liés à la question.
+4. A1Libi **ajoute** ces souvenirs aux instructions.
 5. Tout est **envoyé** à Ollama.
 6. La réponse **s'affiche** mot par mot.
 7. La réponse est **sauvegardée**.

@@ -101,7 +101,7 @@ Ce calcul s'appelle la **similarité cosinus**.
 Les souvenirs sont ajoutés aux **instructions** de l'IA :
 
 ```
-Tu es SensAI, un assistant intelligent et concis.
+Tu es A1Libi, un assistant intelligent et concis.
 
 Souvenirs de tes conversations précédentes avec l'utilisateur. Ce sont des faits que l'utilisateur
 t'a déjà dits : utilise-les pour répondre à toute question sur lui ou sur ce qu'il t'a confié,
@@ -122,7 +122,7 @@ Le code se trouve dans `PromptBuilder.with_rag()` et `PromptBuilder.build()`
 
 ## 🛟 Si Ollama ne répond pas
 
-SensAI ne plante pas.
+A1Libi ne plante pas.
 
 - Les messages sont **quand même archivés**.
 - Mais leur vecteur est **vide**.
@@ -150,7 +150,7 @@ lancer l'outil depuis `src/` ou depuis la racine ouvre la même base.
 | `deep_contexts` | Un par conversation |
 | `long_term_memories` | Les souvenirs, avec leur vecteur |
 
-Quand vous relancez SensAI :
+Quand vous relancez A1Libi :
 
 - La mémoire courte est **rechargée**.
 - La mémoire longue est **rechargée**.

@@ -21,6 +21,7 @@ from src.galerelm.models import (
     PromptBuilder,
     PromptTemplate,
 )
+from src.galerelm.prompt_simplifier import replace_last_user_message
 from src.galerelm.rag import RAGManager
 from src.rapideAPI.client import RapideAPI
 from src.tools.registry import ToolExecutor, ToolRegistry
@@ -354,7 +355,8 @@ class AntiHallucinationWorkflow:
         llm = Chat(
             model=self.model,
             api=self.api,
-            messages=context.get_messages_copy(),
+            # L'historique garde le message original / le LLM reçoit user_prompt (déjà simplifié par ChatEngine)
+            messages=replace_last_user_message(context.get_messages_copy(), user_prompt),
             tools=self.tool_registry.to_tools_list() if self.tool_registry else None,
             system_prompt=built_prompt,
         )

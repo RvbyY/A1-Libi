@@ -1,6 +1,6 @@
 # 🖥️ 6. L'application web
 
-Cette page décrit l'interface de SensAI **dans le navigateur**.
+Cette page décrit l'interface d'A1Libi **dans le navigateur**.
 
 Elle est faite avec **Gradio**.
 
@@ -13,14 +13,17 @@ Elle est faite avec **Gradio**.
 1. Lancez le backend (Ollama) :
 
    ```bash
-   ./script/backend.sh
+   ./scripts/A1Libi_dev -back
    ```
 
-2. Dans un **autre** terminal, à la racine du projet :
+2. Dans un **autre** terminal :
 
    ```bash
-   ./script/frontend.sh
+   ./scripts/A1Libi_dev -front
    ```
+
+Avec Docker, une seule commande suffit : `./scripts/A1Libi -run`.
+Voir [Infrastructure](12-infrastructure.md).
 
 3. Ouvrez http://127.0.0.1:7860 dans le navigateur.
 
@@ -30,7 +33,7 @@ Elle est faite avec **Gradio**.
 
 > [!WARNING]
 > Le rechargement ne voit **pas** les changements dans `src/galerelm/`.
-> Après une modification du backend, **relancez** le script (`Ctrl+C`, puis `./script/frontend.sh`).
+> Après une modification du backend, **relancez** le script (`Ctrl+C`, puis `./scripts/A1Libi_dev -front`).
 
 ---
 
@@ -82,7 +85,7 @@ Dossier : `src/webapp/`
 | `views.py` | Classe `Views`. Construit les **composants** de chaque page. |
 | `utils.py` | Les **fonctions** appelées par les boutons. Elles utilisent le [Wrapper](05-wrapper.md). |
 
-Le script de lancement : `script/frontend.sh`.
+Le script de lancement : [`scripts/A1Libi_dev`](../scripts/A1Libi_dev) (option `-front`).
 
 ---
 
