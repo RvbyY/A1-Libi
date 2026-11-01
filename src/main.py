@@ -15,6 +15,7 @@ from src.galerelm.database import DatabaseManager
 from src.galerelm.engine import ChatEngine
 from src.galerelm.graph import HallucinationGrader
 from src.galerelm.intent_classifier import IntentGuardrail
+from src.galerelm.output_guardrail import OutputGuardrail
 from src.galerelm.ollama import OllamaError, check_ollama
 from src.galerelm.models import Context, Profile, Prompt
 from src.galerelm.session_manager import SessionManager
@@ -23,6 +24,7 @@ from src.repl import TerminalREPL, repl
 from src.scheduler.runner import TaskRunner
 from src.scheduler.task_manager import TaskManager
 from src.tools import ToolRegistry, default_tool_registry
+from src.tools.mcp import McpManager
 
 logger = logging.getLogger("sensai")
 
@@ -62,14 +64,25 @@ class SensAI:
 
         # ── 2. Planificateur de tâches ───────────────────────────────
         self.task_manager = TaskManager(self.session)
-        self.task_runner = TaskRunner(self.SessionLocal, executor=self.chat)
+        # Le runner tourne dans son propre thread, avec sa propre session et son propre moteur (voir run_scheduled_task)
+        self.task_runner = TaskRunner(self.SessionLocal, executor=self.run_scheduled_task, on_result=self._task_done)
+        # Appelé avec (tâche, réponse, erreur) quand une tâche planifiée a été exécutée (affichage CLI)
+        self.on_task_result = None
 
         # ── 3. Client API, Outils, Guardrail & Moteur d'orchestration ─
         self.api = RapideAPI(base_url=api_url, timeout=config.OLLAMA_TIMEOUT)
         self.tools = tool_registry if tool_registry is not None else default_tool_registry()
+        # Outils des serveurs MCP déclarés dans config.yaml (T1) : ils s'ajoutent aux outils intégrés
+        self.mcp = McpManager(config.MCP_SERVERS)
+        self.mcp_tools = self.mcp.register_all(self.tools) if config.MCP_SERVERS else []
+        # Guardrails (EV2) : en entrée selon guardrails.input (ou use_guardrail), en sortie selon guardrails.output
         resolved_guardrail = guardrail
-        if resolved_guardrail is None and use_guardrail:
-            resolved_guardrail = IntentGuardrail(api=self.api, model=resolved_model)
+        if resolved_guardrail is None and (use_guardrail or config.GUARDRAIL_INPUT != "off"):
+            policy = config.GUARDRAIL_INPUT if config.GUARDRAIL_INPUT != "off" else "safety"
+            resolved_guardrail = IntentGuardrail(api=self.api, model=resolved_model, policy=policy)
+        output_guardrail = (
+            OutputGuardrail(config.GUARDRAIL_OUTPUT, config.GUARDRAIL_PII) if config.GUARDRAIL_OUTPUT != "off" else None
+        )
 
         resolved_grader = hallucination_grader
         if resolved_grader is None and use_anti_hallucination:
@@ -83,7 +96,21 @@ class SensAI:
             hallucination_grader=resolved_grader,
             max_hallucination_retries=max_hallucination_retries,
             simplify_prompt=use_simplifier,
+            output_guardrail=output_guardrail,
         )
+        # Moteur séparé pour les tâches planifiées : pas d'état partagé avec la conversation en cours,
+        # et aucune confirmation possible depuis le thread du runner, donc les outils sensibles y sont refusés.
+        self.task_engine = ChatEngine(
+            api=self.api,
+            model=resolved_model,
+            tool_registry=self.tools,
+            simplify_prompt=use_simplifier,
+            output_guardrail=output_guardrail,
+        )
+
+        persona = config.persona()
+        self.chat_engine.persona = persona
+        self.task_engine.persona = persona
 
         # ── 4. Commandes du terminal ─────────────────────────────────
         self.commands = commands if commands is not None else default_registry()
@@ -159,6 +186,48 @@ class SensAI:
         """Envoie un prompt au LLM et retourne la réponse complète."""
         return "".join(self.stream_chat(prompt))
 
+    def set_persona(self, key: str) -> dict:
+        """Change d'agent pour les prochains messages (conversation et tâches planifiées), historique conservé."""
+        persona = self.chat_engine.set_persona(key)
+        self.task_engine.persona = persona
+        return persona
+
+    # ── Tâches planifiées ────────────────────────────────────────────
+
+    def run_scheduled_task(self, task, session) -> str:
+        """
+        Exécute une tâche due dans un nouveau chat du profil, avec la session du runner.
+        Le chat garde la trace de la tâche et de sa réponse (visible avec /new… ou dans la webapp).
+        """
+        profile = session.get(Profile, task.profile_id)
+        if profile is None:
+            raise ValueError(f"Profil introuvable pour la tâche {task.id}.")
+        context = self.session_manager.create_new_context(session, profile.id)
+        self.task_engine.model = self.model
+        return "".join(self.task_engine.stream_turn(
+            session=session,
+            profile=profile,
+            context=context,
+            user_prompt=f"[Tâche planifiée] {task.prompt}",
+        ))
+
+    def _task_done(self, task, response: Optional[str], error: Optional[Exception]) -> None:
+        if self.on_task_result is not None:
+            self.on_task_result(task, response, error)
+
+    def start_scheduler(self, interval: float = 5) -> "SensAI":
+        """Démarre l'exécution automatique des tâches planifiées, en arrière-plan."""
+        self.task_runner.start(interval)
+        return self
+
+    def stop_scheduler(self) -> None:
+        self.task_runner.stop()
+
+    def close(self) -> None:
+        """Arrête proprement les tâches de fond : planificateur et serveurs MCP."""
+        self.stop_scheduler()
+        self.mcp.close()
+
     def build_prompt(self, query: str = "", profile: Profile = None) -> Prompt:
         """Construit un objet Prompt structuré via le ChatEngine."""
         prof = profile or self.profile
@@ -184,6 +253,19 @@ def parse_args(argv: Optional[list[str]] = None) -> argparse.Namespace:
     parser.add_argument("--host", help="URL du serveur Ollama (ex: http://localhost:11434).")
     parser.add_argument("--embed-model", help="Modèle d'embedding pour la mémoire long terme.")
     parser.add_argument("--db", help="URL SQLAlchemy de la base de données.")
+    parser.add_argument("--persona", help="Agent à utiliser (voir /persona ; défaut : prompt.persona de config.yaml).")
+    parser.add_argument(
+        "--guardrail", choices=["off", "safety", "alibi"],
+        help="Filtre d'entrée : classifie chaque demande et bloque les demandes dangereuses (défaut : guardrails.input).",
+    )
+    parser.add_argument(
+        "--output-filter", choices=["off", "anonymize", "refuse"],
+        help="Filtre de sortie : anonymise les données personnelles des réponses, ou refuse la réponse.",
+    )
+    parser.add_argument(
+        "--no-scheduler", action="store_true",
+        help="Ne pas exécuter automatiquement les tâches planifiées (/schedule) pendant la session.",
+    )
     parser.add_argument(
         "--skip-check", action="store_true",
         help="Ne pas vérifier la disponibilité d'Ollama et du modèle au démarrage.",
@@ -234,7 +316,11 @@ def load_config(args: argparse.Namespace) -> None:
         DB_URL=args.db,
         KEEP_ALIVE=args.keep_alive,
         TOOLS_LISTING=args.tools_listing,
+        GUARDRAIL_INPUT=args.guardrail,
+        GUARDRAIL_OUTPUT=args.output_filter,
+        DEFAULT_PERSONA=args.persona,
     )
+    config.persona()  # persona inconnu : erreur de configuration dès le lancement
     config.apply_generation_overrides(
         "chat",
         temperature=args.temperature,
@@ -266,6 +352,11 @@ def main(argv: Optional[list[str]] = None) -> int:
         max_hallucination_retries=args.max_retries if args.max_retries is not None else 2,
     )
 
+    for server, error in sensai.mcp.errors.items():
+        print(f"[*] Serveur MCP '{server}' indisponible : {error}", file=sys.stderr)
+    if sensai.mcp_tools:
+        print(f"[*] Outils MCP ajoutés : {', '.join(sensai.mcp_tools)}", file=sys.stderr)
+
     if not args.skip_check:
         try:
             for warning in check_ollama(sensai.api, config.DEFAULT_MODEL, config.EMBED_MODEL):
@@ -275,7 +366,13 @@ def main(argv: Optional[list[str]] = None) -> int:
             return 1
 
     sensai.load_or_create_profile()
-    TerminalREPL(sensai).run()
+    repl = TerminalREPL(sensai)
+    if not args.no_scheduler:
+        sensai.start_scheduler()
+    try:
+        repl.run()
+    finally:
+        sensai.close()
     return 0
 
 

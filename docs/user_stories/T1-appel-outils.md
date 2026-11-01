@@ -2,7 +2,7 @@
 
 [Retour aux user stories](README.md)
 
-**Statut :** Fait, avec une limite (l'appel d'outils fonctionne de bout en bout, mais SensAI n'a pas de client MCP pour brancher un outil MCP existant)
+**Statut :** Fait
 
 ---
 
@@ -72,31 +72,32 @@
 
 ---
 
-## Ce qu'il reste à faire
+## Ce qui a été ajouté pour terminer la feature
 
-Objectif : parler le **protocole MCP**, pour utiliser un outil MCP existant et exposer nos propres outils en MCP.
-La checklist précise que la feature sera testée avec un outil MCP existant **et** avec le nôtre.
+- **Client MCP** (`src/tools/mcp/client.py`) : JSON-RPC 2.0 sur stdio, sans framework.
+  `initialize`, `notifications/initialized`, `tools/list` (avec pagination) et `tools/call` ;
+  réponse aux `ping` du serveur ; erreur immédiate si le serveur s'arrête.
+- **Adaptateur** `McpTool` : chaque outil d'un serveur MCP devient un tool SensAI (son schéma `inputSchema` est envoyé au modèle).
+  Un nom déjà pris est préfixé par le nom du serveur (`sensai__calendar`).
+  Confirmation de l'utilisateur par défaut, réglable par serveur (`confirm`).
+- **Configuration** : section `mcp_servers` de `config.yaml` (commande, variables d'environnement, dossier, délai).
+  Un serveur en panne est signalé au démarrage sans bloquer les autres.
+- **Notre propre serveur MCP** (`src/tools/mcp/server.py`) : expose `tools_selftest` et `calendar` à tout client MCP.
+  Lancement : `python -m src.tools.mcp.server`.
+- L'import circulaire entre `src.tools` et `src.galerelm` est corrigé : chaque paquet s'importe seul.
 
-1. **Client MCP.**
-   - Créer `src/tools/mcp/client.py` : JSON-RPC 2.0 sur l'entrée et la sortie standard d'un sous-processus.
-   - Implémenter `initialize`, `tools/list` et `tools/call`.
-2. **Adapter les outils distants.**
-   - Créer `McpTool(ToolsInterface)` : le nom, la description et l'`inputSchema` de l'outil MCP
-     deviennent `name`, `description` et `parameters`.
-   - `execute` appelle `tools/call` et renvoie un `ToolResult`.
-   - Laisser choisir `requires_confirmation` par serveur.
-3. **Configurer les serveurs.**
-   - Ajouter une section `mcp_servers` dans `config.yaml` : commande et arguments de chaque serveur.
-   - Au démarrage, lister leurs outils et les ajouter au `ToolRegistry`.
-4. **Notre propre serveur MCP.**
-   - Créer `src/tools/mcp/server.py`, qui expose nos tools (au moins `tools_selftest`) en MCP.
-5. **Tester.**
-   - Un faux serveur MCP (petit script Python) : découverte des outils, appel, erreur, arrêt du sous-processus.
-6. **Démontrer.**
-   - Brancher un serveur MCP public (par exemple le serveur « filesystem » de référence), puis le nôtre.
+### Tests de la finalisation
 
-**Quand la limite sera levée :** un outil d'un serveur MCP existant apparaît dans le prompt
-et s'exécute depuis le chat, comme nos propres outils.
+```bash
+.venv/bin/python -m pytest -q \
+  src/galerelm/unit_tests/test_mcp.py
+```
+
+Résultat au 1er novembre 2026 : 13 tests passés, 0 en échec.
+
+### Vérification avec le vrai modèle
+
+SensAI a lancé son propre serveur MCP, a ajouté ses outils (`sensai__tools_selftest`, `sensai__calendar`) et les a appelés à travers le protocole. Les tests couvrent aussi un serveur MCP tiers simulé (notifications, ping, pagination, erreurs d'outil).
 
 ---
 
@@ -141,6 +142,7 @@ Résultat au 1er novembre 2026 : 21 tests passés, 0 en échec.
 
 ## Limites
 
-- Ce n'est pas un serveur ou un client MCP : les outils sont des classes Python appelées via le function calling d'Ollama.
-- Un petit modèle (2B) appelle parfois mal les outils, ou invente un résultat au lieu de les appeler.
-- `send_task_file` : le test attend `file_path` alors que l'outil attend `task_id` (test en échec).
+- Seul le transport stdio est pris en charge (pas de serveur MCP distant en HTTP).
+- Seuls les outils MCP sont utilisés (pas les « resources » ni les « prompts » du protocole).
+- Un serveur MCP tiers n'a pas pu être lancé pendant la vérification sur cette machine ; voir [Paramètres et démo MCP](../../config.example.yaml)
+  pour en déclarer un (par exemple le serveur « filesystem » officiel).

@@ -106,7 +106,7 @@ Résultat au 1er novembre 2026 : 12 tests passés, 0 en échec.
 
 ### Démonstration manuelle
 
-1. Lancer Ollama : `./script/backend.sh`.
+1. Lancer Ollama : `ollama serve` (ou `./scripts/A1Libi -run` avec Docker).
 2. Lancer le chat : `PYTHONPATH=. .venv/bin/python src/main.py --model llama3.2`.
 3. Poser deux questions liées : la réponse s'affiche au fur et à mesure et la seconde tient compte de la première.
 4. Arrêter Ollama puis relancer : le message « Impossible de joindre Ollama » propose `ollama serve`.

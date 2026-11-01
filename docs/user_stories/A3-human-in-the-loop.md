@@ -2,7 +2,7 @@
 
 [Retour aux user stories](README.md)
 
-**Statut :** Fait en CLI ( dans la webapp : les actions critiques y sont toujours refusées)
+**Statut :** Fait
 
 ---
 
@@ -48,11 +48,13 @@
 
 - [x] Une action refusée n'est jamais exécutée.
 - [x] Le modèle reçoit « Action '…' annulée : l'utilisateur ne l'a pas confirmée. ».
-- [x] Sans moyen de confirmer (webapp, erreur de l'invite), l'action est refusée par défaut.
+- [x] Sans moyen de confirmer (tâche planifiée, erreur de l'invite), l'action est refusée par défaut.
+- [x] Dans la webapp, l'action est mise en attente et décrite ; elle n'est exécutée qu'après `/confirmer` (abandon : `/annuler`).
 - [x] Les outils sans effet de bord (agenda en lecture, recherche mémoire…) s'exécutent sans question.
 
 **Vérifié par :** `test_sensitive_tool_is_refused_without_explicit_approval`,
-`test_chat_does_not_send_without_confirmation_callback`, `test_safe_tool_runs_without_confirmation`.
+`test_chat_does_not_send_without_confirmation_callback`, `test_safe_tool_runs_without_confirmation`,
+`test_webapp_sensitive_action_waits_for_confirmation`, `test_webapp_pending_action_can_be_cancelled`.
 
 ---
 
@@ -90,4 +92,6 @@ Résultat au 1er novembre 2026 : 14 tests passés, 0 en échec.
 
 ## Limites
 
-- La webapp n'a pas encore de boîte de confirmation : ces 5 outils y sont toujours refusés.
+- Les outils des serveurs MCP demandent aussi une confirmation par défaut (`confirm: true`), réglable par serveur.
+- La confirmation porte sur l'appel d'outil : elle n'empêche pas le modèle d'affirmer à tort qu'il a agi sans appeler d'outil
+  (voir [Améliorations mesurées](../17-ameliorations-mesurees.md)).

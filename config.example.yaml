@@ -17,6 +17,30 @@ database:
 prompt:
   # Description des outils dans le prompt système : names (défaut, mesuré), full (signatures) ou none
   tools_listing: names
+  # Agent par défaut (A5) : alibi, tuteur, juriste, ou un persona déclaré plus bas. Changement en session : /persona
+  persona: alibi
+
+# Guardrails (EV2)
+guardrails:
+  input: off            # off, safety ou alibi : classe chaque demande et bloque les demandes dangereuses
+  output: off           # off, anonymize ou refuse : données personnelles dans les réponses
+  pii: [email, phone, iban, card, ssn]
+
+# Personas supplémentaires (A5) : nom, description, instructions ({persona} est remplacé par le nom)
+personas:
+  support:
+    name: Agent support
+    description: Aide les clients de la boutique
+    instructions: Tu es {persona}. Tu réponds poliment et brièvement aux questions sur les commandes.
+
+# Serveurs MCP (T1) : leurs outils s'ajoutent à ceux de SensAI. confirm: true = accord de l'utilisateur avant chaque appel
+mcp_servers:
+  sensai:               # notre propre serveur MCP (tools_selftest, calendar)
+    command: [.venv/bin/python, -m, src.tools.mcp.server]   # lancé depuis la racine du projet
+    confirm: false
+  # filesystem:         # exemple de serveur MCP officiel (nécessite Node.js et un accès réseau au premier lancement)
+  #   command: npx -y @modelcontextprotocol/server-filesystem /home/moi/documents
+  #   confirm: true
 
 memory:
   context_limit: 10         # messages gardés en mémoire courte avant archivage

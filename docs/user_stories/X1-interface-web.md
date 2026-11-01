@@ -2,7 +2,7 @@
 
 [Retour aux user stories](README.md)
 
-**Statut :** Fait, avec une limite (pas de changement d'agent ni d'affichage des tokens consommés)
+**Statut :** Fait
 
 ---
 
@@ -12,7 +12,7 @@
 
 ## Ce que fait SensAI
 
-- Une application **Gradio** (`src/webapp/`), lancée avec `./script/frontend.sh`.
+- Une application **Gradio** (`src/webapp/`), lancée avec `./scripts/A1Libi -run` (Docker).
 - Elle passe par `SensAIWrapper`, la même couche que la CLI : mêmes profils, mêmes chats, même base.
 - Une page de connexion (email, nom, instructions), une page de chat et une barre latérale des conversations.
 - Des cases à cocher activent le guardrail et l'anti-hallucination, avec un visualiseur du pipeline.
@@ -51,24 +51,30 @@
 
 ---
 
-## Ce qu'il reste à faire
+## Ce qui a été ajouté pour terminer la feature
 
-Objectif : compléter l'interface avec la consommation de tokens et le changement d'agent.
+- **Changement d'agent** : liste déroulante « Agent » dans la barre latérale (personas A5), sans effacer la conversation.
+- **Consommation affichée** sous le chat après chaque réponse : tokens lus et générés, remplissage de la fenêtre de contexte,
+  mémoire courte (messages / limite), agent et modèle actifs.
+- **Confirmation des actions sensibles** dans la webapp : l'action est mise en attente et décrite, puis exécutée
+  avec `/confirmer` ou abandonnée avec `/annuler`.
+- **Onglet Monitoring** (EV3).
+- Deux bugs corrigés : l'inspecteur appelait une méthode inexistante (`render_system`), ce qui faisait planter chaque message,
+  et les commandes `/…` utilisaient un attribut inexistant (`core.ui`) avec un mauvais découpage de la commande.
 
-1. **Afficher les tokens et le contexte.**
-   - Les compteurs existent déjà : `prompt_eval_count` et `eval_count` dans chaque réponse d'Ollama.
-   - Les afficher sous le chat après chaque réponse, avec le remplissage du contexte (messages / `CONTEXT_LIMIT`).
-2. **Changer d'agent.**
-   - Dépend de la feature A5 (personas), pas encore faite.
-   - Déclarer plusieurs agents dans `config.yaml` : nom, ton, instructions.
-   - Ajouter une liste déroulante qui change l'agent pour les messages suivants, **sans** effacer l'historique.
-3. **Confirmer les actions critiques.**
-   - Ajouter une boîte de confirmation pour les outils sensibles, qui sont aujourd'hui toujours refusés dans la webapp.
-4. **Tester.**
-   - Les méthodes de `WebAppController` : compteurs renvoyés après un message, changement d'agent.
+### Tests de la finalisation
 
-**Quand la limite sera levée :** l'utilisateur voit les tokens consommés à chaque réponse
-et change d'agent en cours de conversation sans perdre l'historique.
+```bash
+.venv/bin/python -m pytest -q \
+  src/galerelm/unit_tests/test_persona_webapp.py \
+  src/galerelm/unit_tests/test_monitoring.py
+```
+
+Résultat au 1er novembre 2026 : 24 tests passés, 0 en échec.
+
+### Vérification avec le vrai modèle
+
+La webapp se charge, et son contrôleur a été testé de bout en bout : message, inspecteur, consommation, commande `/persona`, changement d'agent, confirmation et annulation d'une action.
 
 ---
 
@@ -80,7 +86,7 @@ et change d'agent en cours de conversation sans perdre l'historique.
 - [`src/webapp/views.py`](../../src/webapp/views.py)
 - [`src/webapp/utils.py`](../../src/webapp/utils.py)
 - [`src/galerelm/wrapper.py`](../../src/galerelm/wrapper.py)
-- [`script/frontend.sh`](../../script/frontend.sh)
+- [`scripts/A1Libi`](../../scripts/A1Libi)
 
 ### Tests automatisés
 
@@ -96,7 +102,7 @@ Résultat au 1er novembre 2026 : 2 tests passés, 0 en échec.
 
 ### Démonstration manuelle
 
-1. Lancer Ollama puis `./script/frontend.sh`, et ouvrir http://127.0.0.1:7860.
+1. Lancer `./scripts/A1Libi -run`, et ouvrir http://localhost:7860.
 2. Se connecter avec un email : la page de chat s'ouvre.
 3. Envoyer un message : la réponse s'écrit au fur et à mesure.
 4. Cliquer sur « Nouvelle conversation », puis rouvrir l'ancienne depuis la liste.
@@ -105,7 +111,5 @@ Résultat au 1er novembre 2026 : 2 tests passés, 0 en échec.
 
 ## Limites
 
+- Le contrôleur de la webapp est partagé : l'agent choisi s'applique à tous les utilisateurs connectés en même temps.
 - Pas de mot de passe : l'email identifie le profil, il ne le protège pas.
-- Pas de boîte de confirmation pour les outils sensibles : ils y sont toujours refusés.
-- Les logs d'appels d'outils ne sont affichés que dans la CLI.
-- L'interface Gradio elle-même n'a pas de tests automatisés.

@@ -10,6 +10,7 @@ Ordre de priorité (du plus fort au plus faible) :
 """
 import copy
 import os
+import shlex
 from pathlib import Path
 from typing import Any, Optional, Union
 
@@ -36,7 +37,54 @@ YAML_KEYS: dict[tuple[str, str], str] = {
     ("memory", "context_limit"): "CONTEXT_LIMIT",
     ("memory", "deep_context_limit"): "DEEP_CONTEXT_LIMIT",
     ("prompt", "tools_listing"): "TOOLS_LISTING",
+    ("prompt", "persona"): "DEFAULT_PERSONA",
+    ("guardrails", "input"): "GUARDRAIL_INPUT",
+    ("guardrails", "output"): "GUARDRAIL_OUTPUT",
+    ("guardrails", "pii"): "GUARDRAIL_PII",
 }
+
+# Valeurs acceptées pour les réglages à choix fermés
+CHOICES: dict[str, tuple[str, ...]] = {
+    "GUARDRAIL_INPUT": ("off", "safety", "alibi"),
+    "GUARDRAIL_OUTPUT": ("off", "anonymize", "refuse"),
+}
+PII_CATEGORIES = ("email", "iban", "card", "ssn", "phone")
+
+# ── Personas (A5) ────────────────────────────────────────────────────
+# Un persona définit le nom, le ton, le rôle et le périmètre de l'agent. Il se choisit dans config.yaml
+# (prompt.persona), avec --persona, ou pendant la session avec /persona, sans effacer l'historique.
+# "instructions" vide : les instructions du profil utilisateur sont gardées (comportement par défaut).
+DEFAULT_PERSONAS: dict[str, dict[str, str]] = {
+    "alibi": {
+        "name": "Alibi",
+        "description": "Assistant général (instructions du profil).",
+        "instructions": "",
+    },
+    "tuteur": {
+        "name": "Tuteur de mathématiques",
+        "description": "Explique les mathématiques pas à pas, avec un exemple.",
+        "instructions": (
+            "Tu es {persona}, patient et encourageant.\n"
+            "Explique chaque notion étape par étape, avec un exemple chiffré, puis pose une question "
+            "pour vérifier que l'élève a compris.\n"
+            "Tu ne réponds qu'aux questions de mathématiques : pour tout autre sujet, dis-le poliment et propose de revenir aux maths."
+        ),
+    },
+    "juriste": {
+        "name": "Assistant juridique",
+        "description": "Vulgarise le droit français, sans remplacer un avocat.",
+        "instructions": (
+            "Tu es {persona}. Tu expliques le droit français simplement, en citant le texte ou le principe concerné.\n"
+            "Tu rappelles que ta réponse est une information générale, pas un conseil juridique, "
+            "et tu orientes vers un professionnel pour un cas précis."
+        ),
+    },
+}
+PERSONA_FIELDS = ("name", "description", "instructions")
+
+# ── Serveurs MCP (T1) ────────────────────────────────────────────────
+# Chaque serveur est un programme lancé par SensAI (transport stdio) ; ses outils rejoignent ceux de SensAI.
+MCP_SERVER_FIELDS = ("command", "env", "cwd", "timeout", "confirm", "enabled")
 
 # Description des outils dans le prompt système (ils sont aussi envoyés à Ollama dans le champ "tools") :
 #   full  : une signature par outil (paramètres, valeurs possibles) et sa description
@@ -154,6 +202,17 @@ class Config:
     # "names" : choix mesuré (-288 tokens par requête, aucune perte de réussite), voir docs/17-ameliorations-mesurees.md
     TOOLS_LISTING: str = os.getenv("TOOLS_LISTING", "names")
 
+    # ── Guardrails (EV2) ──
+    # Entrée : classification d'intention avant le modèle (off, safety, alibi)
+    GUARDRAIL_INPUT: str = os.getenv("GUARDRAIL_INPUT", "off")
+    # Sortie : données personnelles dans les réponses (off, anonymize, refuse)
+    GUARDRAIL_OUTPUT: str = os.getenv("GUARDRAIL_OUTPUT", "off")
+    # Catégories surveillées par le filtre de sortie
+    GUARDRAIL_PII: list = list(PII_CATEGORIES)
+
+    # ── Persona (A5) ──
+    DEFAULT_PERSONA: str = os.getenv("PERSONA", "alibi")
+
     # ── Outils de Communication (Discord, Telegram, Email) ──
     DISCORD_TOKEN: str = os.getenv("DISCORD_TOKEN", "")
     DISCORD_ID: str = os.getenv("DISCORD_ID", "")
@@ -167,6 +226,8 @@ class Config:
     def __init__(self) -> None:
         # Copie par instance : modifier un profil (/params, tests) ne touche pas aux valeurs par défaut
         self.GENERATION: dict[str, dict[str, Any]] = copy.deepcopy(DEFAULT_GENERATION)
+        self.PERSONAS: dict[str, dict[str, str]] = copy.deepcopy(DEFAULT_PERSONAS)
+        self.MCP_SERVERS: dict[str, dict[str, Any]] = {}
         self._startup_generation = copy.deepcopy(self.GENERATION)
 
     # ── Paramètres de génération ─────────────────────────────────────
@@ -203,6 +264,16 @@ class Config:
         """Affecte une valeur en la convertissant au type de la valeur par défaut."""
         if attr == "TOOLS_LISTING" and value not in TOOLS_LISTING_MODES:
             raise ConfigError(f"{source} : valeur invalide '{value}' (attendu : {', '.join(TOOLS_LISTING_MODES)}).")
+        if attr in CHOICES and value is False:
+            value = "off"  # en YAML, `off` sans guillemets est lu comme le booléen false
+        if attr in CHOICES and value not in CHOICES[attr]:
+            raise ConfigError(f"{source} : valeur invalide '{value}' (attendu : {', '.join(CHOICES[attr])}).")
+        if attr == "GUARDRAIL_PII":
+            items = [v.strip() for v in value.split(",")] if isinstance(value, str) else value
+            if not isinstance(items, list) or not items or any(item not in PII_CATEGORIES for item in items):
+                raise ConfigError(f"{source} : liste invalide {value!r} (catégories : {', '.join(PII_CATEGORIES)}).")
+            setattr(self, attr, list(items))
+            return
         expected = type(getattr(Config, attr))
         try:
             setattr(self, attr, expected(value))
@@ -229,6 +300,12 @@ class Config:
             if section == "generation":
                 self._load_generation(values, path)
                 continue
+            if section == "personas":
+                self._load_personas(values, path)
+                continue
+            if section == "mcp_servers":
+                self._load_mcp_servers(values, path)
+                continue
             for key, value in values.items():
                 attr = YAML_KEYS.get((section, key))
                 if attr is None:
@@ -236,8 +313,55 @@ class Config:
                 if value is not None:
                     self._set(attr, value, f"{path} [{section}.{key}]")
 
+        if self.DEFAULT_PERSONA not in self.PERSONAS:
+            raise ConfigError(f"{path} : persona inconnu '{self.DEFAULT_PERSONA}' (connus : {', '.join(self.PERSONAS)}).")
         self.loaded_file = str(path)
         return self
+
+    def _load_personas(self, personas: dict, path: Path) -> None:
+        """Section 'personas' : ajoute ou remplace des personas (clé -> name, description, instructions)."""
+        for key, spec in personas.items():
+            if not isinstance(spec, dict):
+                raise ConfigError(f"{path} : 'personas.{key}' doit être un dictionnaire (name, description, instructions).")
+            unknown = set(spec) - set(PERSONA_FIELDS)
+            if unknown:
+                raise ConfigError(f"{path} : champ inconnu dans 'personas.{key}' : {', '.join(sorted(unknown))}.")
+            if not isinstance(spec.get("name"), str) or not spec["name"].strip():
+                raise ConfigError(f"{path} : 'personas.{key}.name' est obligatoire.")
+            self.PERSONAS[str(key)] = {field: str(spec.get(field) or "") for field in PERSONA_FIELDS}
+
+    def _load_mcp_servers(self, servers: dict, path: Path) -> None:
+        """Section 'mcp_servers' : nom -> command (liste ou chaîne), env, cwd, timeout, confirm, enabled."""
+        for name, spec in servers.items():
+            where = f"{path} [mcp_servers.{name}]"
+            if not isinstance(spec, dict):
+                raise ConfigError(f"{where} : doit être un dictionnaire (command, env, cwd, timeout, confirm, enabled).")
+            unknown = set(spec) - set(MCP_SERVER_FIELDS)
+            if unknown:
+                raise ConfigError(f"{where} : champ inconnu {', '.join(sorted(unknown))}.")
+            command = spec.get("command")
+            if isinstance(command, str):
+                command = shlex.split(command)
+            if not isinstance(command, list) or not command or not all(isinstance(part, str) for part in command):
+                raise ConfigError(f"{where} : 'command' est obligatoire (liste ou chaîne).")
+            env = spec.get("env") or {}
+            if not isinstance(env, dict):
+                raise ConfigError(f"{where} : 'env' doit être un dictionnaire.")
+            self.MCP_SERVERS[str(name)] = {
+                "command": command,
+                "env": {str(k): str(v) for k, v in env.items()},
+                "cwd": spec.get("cwd"),
+                "timeout": float(spec.get("timeout", 30)),
+                "confirm": bool(spec.get("confirm", True)),
+                "enabled": bool(spec.get("enabled", True)),
+            }
+
+    def persona(self, key: Optional[str] = None) -> dict[str, str]:
+        """Retourne un persona (par défaut : DEFAULT_PERSONA). Lève ConfigError s'il est inconnu."""
+        key = key or self.DEFAULT_PERSONA
+        if key not in self.PERSONAS:
+            raise ConfigError(f"Persona inconnu '{key}' (connus : {', '.join(self.PERSONAS)}).")
+        return {"key": key, **self.PERSONAS[key]}
 
     def _load_generation(self, profiles: dict, path: Path) -> None:
         """Section 'generation' : un sous-dictionnaire par profil (chat, judge, guardrail)."""

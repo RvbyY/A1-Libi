@@ -2,7 +2,7 @@
 
 [Retour aux user stories](README.md)
 
-**Statut :** Partiel (filtre en entrée fait ; anonymisation en sortie à faire)
+**Statut :** Fait
 
 ---
 
@@ -53,30 +53,31 @@
 
 ---
 
-## Ce qu'il reste à faire
+## Ce qui a été ajouté pour terminer la feature
 
-Objectif : ajouter le **filtre en sortie**, et rendre les deux filtres configurables.
+- **Filtre de sortie** (`src/galerelm/output_guardrail.py`) : email, téléphone, IBAN, carte bancaire (contrôle de Luhn)
+  et numéro de sécurité sociale sont détectés dans les réponses.
+- Deux modes : `anonymize` remplace chaque donnée par une étiquette (`[EMAIL]`, `[TELEPHONE]`…),
+  `refuse` remplace toute la réponse par un message de refus.
+- Le filtre s'applique **à l'affichage et à la base** : la donnée n'est jamais enregistrée.
+  En streaming, le texte est filtré phrase par phrase, pour reconnaître une donnée coupée en plusieurs tokens.
+- Règles configurables : section `guardrails` de `config.yaml` (`input`, `output`, `pii`),
+  options `--guardrail` et `--output-filter`, case à cocher dans la webapp.
+- Les règles du prompt par défaut qui demandaient de répondre aux questions illégales sont remplacées
+  par une règle de refus.
 
-1. **Détecter les données personnelles.**
-   - Créer `src/galerelm/output_guardrail.py` avec une classe `OutputGuardrail`.
-   - Détection par expressions régulières : email, téléphone, IBAN, numéro de carte bancaire, numéro de sécurité sociale.
-2. **Anonymiser ou refuser.**
-   - Mode `anonymize` : remplacer chaque donnée par une étiquette (`[EMAIL]`, `[TELEPHONE]`…).
-   - Mode `refuse` : remplacer toute la réponse par un message de refus.
-3. **Brancher le filtre.**
-   - L'appliquer dans `ChatEngine` avant l'affichage **et** avant la sauvegarde en base.
-   - Le streaming envoie des morceaux de mots : il faut filtrer par phrase (tampon jusqu'à la ponctuation),
-     ou désactiver le streaming quand le filtre est actif.
-4. **Rendre les règles configurables.**
-   - Ajouter une section `guardrails` dans `config.yaml` : catégories à anonymiser, mode, politique d'entrée.
-   - Ajouter `--guardrail` à la CLI : aujourd'hui, le filtre d'entrée ne s'active que dans la webapp.
-5. **Retirer la contradiction du prompt.**
-   - Supprimer de `DEFAULT_SYSTEM_RULES` les règles qui demandent de répondre aux questions illégales.
-6. **Tester.**
-   - Chaque catégorie de données, les deux modes, le filtrage en streaming, la configuration YAML.
+### Tests de la finalisation
 
-**Quand le considérer comme fait :** une réponse contenant un email ou un téléphone est affichée
-et enregistrée anonymisée, selon les règles de `config.yaml`.
+```bash
+.venv/bin/python -m pytest -q \
+  src/galerelm/unit_tests/test_output_guardrail.py
+```
+
+Résultat au 1er novembre 2026 : 23 tests passés, 0 en échec.
+
+### Vérification avec le vrai modèle
+
+Avec le vrai modèle, la phrase « mon email est alice@exemple.fr et mon numéro est le 06 12 34 56 78 » est devenue « mon email est [EMAIL] et mon numéro est le [TELEPHONE] », à l'écran et en base.
 
 ---
 
@@ -104,14 +105,13 @@ Résultat au 1er novembre 2026 : 5 tests passés, 0 en échec.
 
 ### Démonstration manuelle
 
-1. Lancer la webapp (`./script/frontend.sh`) et cocher la case guardrail.
+1. Lancer la webapp (`./scripts/A1Libi -run`) et cocher la case guardrail.
 2. Envoyer une demande clairement illégale : le message de refus s'affiche et le visualiseur marque l'étape guardrail en erreur.
 
 ---
 
 ## Limites
 
-- Pas de filtre en sortie : les données personnelles ne sont pas anonymisées.
-- Activable dans la webapp (case à cocher), pas encore depuis la CLI.
-- Les règles par défaut du prompt système demandent de répondre aux questions illégales :
-  elles contredisent ce guardrail et devraient être retirées.
+- La détection repose sur des expressions régulières : un numéro écrit en toutes lettres n'est pas reconnu.
+- En mode `refuse`, la réponse n'est affichée qu'à la fin (pas de streaming), puisqu'elle peut être remplacée en entier.
+- Le classement d'intention (entrée) dépend du modèle : un petit modèle se trompe plus souvent.

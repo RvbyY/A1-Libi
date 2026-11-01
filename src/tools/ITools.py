@@ -2,7 +2,6 @@ from abc import ABC, abstractmethod
 from dataclasses import dataclass
 from typing import Any, Optional
 
-from src.galerelm.models.tools import Tools, ToolsFunction
 
 
 @dataclass
@@ -52,8 +51,11 @@ class ToolsInterface(ABC):
     def execute(self, context: ToolContext, arguments: dict) -> ToolResult:
         raise NotImplementedError
 
-    def to_model(self) -> Tools:
+    def to_model(self) -> "Tools":
         """Convertit l'outil en modèle Tools compatible avec Chat et ToolsList."""
+        # Import local : src.galerelm importe src.tools au chargement, un import en tête serait circulaire.
+        from src.galerelm.models.tools import Tools, ToolsFunction
+
         return Tools(
             tool_type="function",
             tool_function=ToolsFunction(

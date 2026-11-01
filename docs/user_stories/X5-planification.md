@@ -2,7 +2,7 @@
 
 [Retour aux user stories](README.md)
 
-**Statut :** Partiel (les tâches sont créées et enregistrées, mais le `TaskRunner` n'est jamais démarré)
+**Statut :** Fait
 
 Fiche technique détaillée : [Scheduled AI Tasks](../features/scheduled-tasks.md).
 
@@ -32,7 +32,7 @@ Fiche technique détaillée : [Scheduled AI Tasks](../features/scheduled-tasks.m
 - [x] Les formats `at`, `in` (`10s`, `30m`, `2h`, `1d`), `daily` et `weekly` sont reconnus.
 - [x] Un format invalide affiche l'usage attendu.
 - [x] La tâche est enregistrée en base avec son heure d'exécution.
-- [ ] La tâche s'exécute à l'heure prévue (le `TaskRunner` n'est pas encore lancé par la CLI ni la webapp).
+- [x] La tâche s'exécute à l'heure prévue, sans intervention : le `TaskRunner` tourne en arrière-plan.
 
 **Vérifié par :** `test_schedule_parser_modes_and_reschedule`, `test_create_scheduled_task`.
 
@@ -56,28 +56,27 @@ Fiche technique détaillée : [Scheduled AI Tasks](../features/scheduled-tasks.m
 
 ---
 
-## Ce qu'il reste à faire
+## Ce qui a été ajouté pour terminer la feature
 
-Objectif : que les tâches programmées **s'exécutent vraiment**, sans intervention.
+- `TaskRunner` tourne dans un thread en arrière-plan, démarré par la CLI (`--no-scheduler` pour le couper) et par la webapp.
+- Chaque passage ouvre **sa propre session** de base : le runner ne partage rien avec le terminal.
+- Les tâches sont exécutées par un **moteur de chat dédié** : aucun état partagé avec la conversation en cours,
+  et les outils sensibles y sont refusés (personne ne peut confirmer depuis le thread du runner).
+- Le résultat est enregistré dans un **nouveau chat** du profil, et affiché dans le terminal (« [Tâche planifiée] … »).
+- Une tâche en échec est marquée `failed` et signalée ; une tâche récurrente est reprogrammée.
 
-1. **Démarrer le runner.**
-   - Lancer `TaskRunner.run_forever()` dans un thread en arrière-plan (`daemon=True`) au démarrage
-     de la CLI (`src/main.py`) et de la webapp.
-   - Ajouter une option `--no-scheduler` pour le désactiver.
-2. **Isoler l'exécution.**
-   - Aujourd'hui, `TaskRunner` reçoit `executor=self.chat` : il utiliserait la même session SQLAlchemy
-     et le même chat que le terminal, depuis un autre thread.
-   - Donner au runner sa propre session, et un chat dédié « Tâches planifiées » par profil.
-3. **Prévenir l'utilisateur.**
-   - Enregistrer le résultat dans ce chat dédié.
-   - En CLI, l'afficher sans casser la ligne en cours de saisie.
-   - Dans la webapp, le faire apparaître dans la liste des conversations.
-4. **Tester.**
-   - Le runner exécute une tâche due avec un faux exécuteur, reprogramme une tâche récurrente,
-     marque une tâche en échec, et s'arrête proprement.
+### Tests de la finalisation
 
-**Quand le considérer comme fait :** `/schedule in 1m dis bonjour` produit la réponse une minute plus tard,
-sans action de l'utilisateur, dans le chat « Tâches planifiées ».
+```bash
+.venv/bin/python -m pytest -q \
+  src/galerelm/unit_tests/test_scheduler_runner.py
+```
+
+Résultat au 1er novembre 2026 : 6 tests passés, 0 en échec.
+
+### Vérification avec le vrai modèle
+
+Une tâche due (« donne un conseil court pour bien dormir ») a été exécutée par le runner avec le vrai modèle, et sa réponse enregistrée dans un nouveau chat.
 
 ---
 
@@ -117,5 +116,5 @@ Résultat au 1er novembre 2026 : 6 tests passés, 0 en échec.
 
 ## Limites
 
-- `TaskRunner.run_forever()` n'est appelé nulle part : il faut le démarrer dans un thread au lancement.
-- Le résultat d'une tâche est seulement affiché dans le terminal (`print`) : il n'est pas enregistré dans un chat.
+- La vérification des tâches a lieu toutes les 5 secondes : une tâche peut partir jusqu'à 5 secondes après son heure.
+- Dans le terminal, le résultat s'affiche au milieu de la saisie en cours : il est aussi gardé dans un chat dédié.

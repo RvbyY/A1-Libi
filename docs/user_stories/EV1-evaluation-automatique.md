@@ -2,7 +2,7 @@
 
 [Retour aux user stories](README.md)
 
-**Statut :** Partiel (détection d'hallucinations faite ; note de cohérence et validation des sources à faire)
+**Statut :** Fait
 
 ---
 
@@ -55,30 +55,30 @@
 
 ---
 
-## Ce qu'il reste à faire
+## Ce qui a été ajouté pour terminer la feature
 
-Objectif : produire des **scores** comparables entre versions, en plus de la détection d'hallucinations.
+- **Scores du juge** : pertinence, cohérence et fidélité aux sources (0 à 5), plus la liste des affirmations non appuyées.
+- **Signalement à l'utilisateur** : en mode `--anti-hallucination`, une réponse non ancrée est suivie de
+  « [Vérification] Affirmations non appuyées par les sources : … ».
+- **Plus d'acceptation silencieuse** : si le juge plante ou répond un JSON illisible, la réponse est marquée
+  « n'a pas pu être vérifiée » au lieu d'être présentée comme vérifiée.
+- **Scores conservés** dans le journal des échanges (`interaction_logs`, EV3) pour suivre leur évolution.
+- **Comparaison de versions** : `python -m benchmark.judge` note les réponses de plusieurs versions
+  (avec ou sans documents, plusieurs modèles, `--judge-model`) sur un jeu de référence ; voir [Évaluation par le juge](../18-evaluation-juge.md).
+- Le prompt du juge ne contient plus de valeurs d'exemple : le juge 2B les recopiait (5/5 partout).
 
-1. **Enrichir le juge.**
-   - Dans `HALLUCINATION_GRADER_TEMPLATE` (`src/galerelm/models/prompt.py`), demander en JSON :
-     `relevance`, `coherence` et `faithfulness` (de 0 à 5), plus la liste `unsupported_claims`.
-   - Ajouter ces champs à `HallucinationGrade` (`src/galerelm/graph.py`).
-2. **Ne plus accepter en silence.**
-   - Aujourd'hui, un juge en erreur ou un JSON illisible valide la réponse.
-   - Marquer plutôt la réponse « non vérifiée » et l'afficher comme telle.
-3. **Signaler les affirmations douteuses.**
-   - Afficher les `unsupported_claims` sous la réponse quand la limite de régénérations est atteinte.
-4. **Conserver les scores.**
-   - Ajouter une table `EvaluationResult` : date, modèle, prompt, question, réponse, scores.
-5. **Comparer des versions.**
-   - Créer un jeu de questions de référence (`eval/dataset.jsonl`).
-   - Créer un script `python -m src.evaluation run --model <modèle>` qui rejoue le jeu et affiche les scores moyens.
-   - Deux exécutions (deux modèles, ou deux prompts) donnent un tableau comparatif.
-6. **Tester.**
-   - Analyse des scores, cas « non vérifié », calcul des moyennes avec un faux juge.
+### Tests de la finalisation
 
-**Quand le considérer comme fait :** le script produit un rapport de scores pour deux modèles,
-et une réponse inventée est signalée à l'utilisateur.
+```bash
+.venv/bin/python -m pytest -q \
+  src/galerelm/unit_tests/test_judge_eval.py
+```
+
+Résultat au 1er novembre 2026 : 8 tests passés, 0 en échec.
+
+### Vérification avec le vrai modèle
+
+Avec le vrai modèle, sans documents : fidélité 3,2 / 5, 40 % de réponses ancrées, 6 affirmations signalées ; avec documents : 5 / 5, 100 %, aucune affirmation signalée.
 
 ---
 
@@ -115,7 +115,6 @@ Résultat au 1er novembre 2026 : 6 tests passés, 0 en échec.
 
 ## Limites
 
-- Pas encore de note de cohérence ni de validation des sources.
-- Si le juge plante ou renvoie un JSON illisible, la réponse est acceptée sans avertissement.
-- Le même modèle génère et juge : un petit modèle détecte peu d'erreurs.
-- Dans ce mode, la réponse s'affiche d'un bloc, sans streaming.
+- Le juge est le modèle 2B : il détecte les erreurs grossières, mais reste indulgent et produit parfois un JSON illisible
+  (réponse alors « non vérifiée »). Un juge plus gros se choisit avec `--judge-model`.
+- Les scores du juge ne sont pas calibrés sur des notes humaines.
