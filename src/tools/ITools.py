@@ -29,6 +29,10 @@ class ToolResult:
 class ToolsInterface(ABC):
     """Contrat abstrait que chaque outil du framework SensAI doit implémenter."""
 
+    # True pour les actions critiques (envoi, suppression...) : ToolExecutor demande
+    # alors l'accord de l'utilisateur avant l'exécution, et refuse sans confirmation.
+    requires_confirmation: bool = False
+
     @property
     @abstractmethod
     def name(self) -> str:

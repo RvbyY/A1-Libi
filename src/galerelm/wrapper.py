@@ -64,6 +64,8 @@ class SensAIWrapper:
     def start_new_chat(self, email: str) -> ContextResponse:
         with self.core.db.session_scope() as session:
             profile = self.sessions.get_profile_or_raise(session, email)
+            # Rend les chats précédents retrouvables depuis le nouveau (RAG)
+            self.sessions.archive_chats(session, profile, api_client=self.core.api)
             new_context = self.sessions.create_new_context(session, profile.id)
             return ContextResponse(new_context.id, new_context.profile_id, new_context.context_limit)
 

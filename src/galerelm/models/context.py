@@ -23,7 +23,7 @@ class Context(Base):
 
     id: int = Column(Integer, primary_key=True, autoincrement=True)
     profile_id: str = Column(String, ForeignKey("profiles.id"), nullable=False)
-    context_limit: int = Column(Integer, default=config.CONTEXT_LIMIT, nullable=False)
+    context_limit: int = Column(Integer, default=lambda: config.CONTEXT_LIMIT, nullable=False)
 
     options = relationship(
         "Options", uselist=False, backref="context_parent",
@@ -39,9 +39,10 @@ class Context(Base):
         order_by="Message.id"
     )
 
-    def __init__(self, profile_id: str, context_limit: int = config.CONTEXT_LIMIT, options: Optional[Options] = None,
+    def __init__(self, profile_id: str, context_limit: Optional[int] = None, options: Optional[Options] = None,
                  messages: Optional[MessageList] = None):
         self.profile_id = profile_id
+        context_limit = context_limit if context_limit is not None else config.CONTEXT_LIMIT
         self.context_limit = context_limit
         self.options = options if options is not None else Options()
         self.messages = messages if messages is not None else MessageList([])

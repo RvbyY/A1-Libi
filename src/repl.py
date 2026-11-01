@@ -6,6 +6,7 @@ import logging
 from typing import TYPE_CHECKING, Optional
 
 from rich.console import Console, Group
+from rich.markup import escape
 from rich.panel import Panel
 from rich.table import Table
 from rich.text import Text
@@ -13,6 +14,7 @@ from rich.theme import Theme
 
 from src.commands.base import CommandResult
 from src.commands.registry import CommandRegistry
+from src.galerelm.ollama import OllamaError, translate_error
 
 if TYPE_CHECKING:
     from src.main import SensAI
@@ -44,6 +46,47 @@ class TerminalREPL:
     def __init__(self, app: "SensAI", console: Optional[Console] = None):
         self.app = app
         self.console = console or Console(theme=THEME)
+        self.app.chat_engine.confirm_tool = self.confirm_tool
+        self.app.chat_engine.on_tool_call = self.log_tool_call
+
+    @staticmethod
+    def format_tool_call(name: str, arguments: dict, max_value_len: int = 40) -> str:
+        """Résume un appel d'outil sur une ligne : nom(arg='valeur', ...), valeurs longues tronquées."""
+        parts = []
+        for key, value in arguments.items():
+            shown = repr(value)
+            if len(shown) > max_value_len:
+                shown = shown[: max_value_len - 1] + "…"
+            parts.append(f"{key}={shown}")
+        return f"{name}({', '.join(parts)})"
+
+    def log_tool_call(self, name: str, arguments: dict, result, duration_ms: float) -> None:
+        """Affiche dans le terminal chaque outil appelé par l'assistant, son statut et sa durée."""
+        status = "[hack.bright]✓[/]" if result.success else "[hack.error]✗[/]"
+        # Une ligne par appel, même si le message du tool contient des retours à la ligne
+        message = " ".join(str(result.message).split())
+        if len(message) > 100:
+            message = message[:99] + "…"
+        self.console.print(
+            f"\n[hack.dim]⚙ tool[/] [hack]{escape(self.format_tool_call(name, arguments))}[/] "
+            f"{status} [hack.dim]{escape(message)} ({duration_ms:.0f} ms)[/]"
+        )
+
+    def confirm_tool(self, name: str, arguments: dict) -> bool:
+        """Demande à l'utilisateur d'autoriser un outil sensible avant son exécution (défaut : non)."""
+        details = "\n".join(f"  {key} = {value!r}" for key, value in arguments.items()) or "  (aucun argument)"
+        self.console.print(
+            f"\n[hack.error]\\[?] L'assistant veut exécuter l'outil « {escape(name)} » :[/]\n"
+            f"[hack]{escape(details)}[/]"
+        )
+        try:
+            answer = self.console.input("[hack.bright]Autoriser ? [o/N] [/]").strip().lower()
+        except (EOFError, KeyboardInterrupt):
+            answer = ""
+        approved = answer in ("o", "oui", "y", "yes")
+        if not approved:
+            self.console.print("[hack.dim]> action annulée.[/]")
+        return approved
 
     def print_welcome(self) -> None:
         """Affiche la bannière d'accueil dans le terminal."""
@@ -88,7 +131,19 @@ class TerminalREPL:
                 self.console.print(token, end="", style="hack", markup=False)
             self.console.print()
         except Exception as exc:
-            self.console.print(f"\n[hack.error]\\[!] Erreur de connexion : {exc}[/]")
+            error = translate_error(exc, host=self.app.api.base_url, model=self.app.model)
+            if not isinstance(error, OllamaError):
+                logger.exception("Erreur inattendue pendant la génération")
+            self.print_error(error)
+
+    def print_error(self, error: Exception) -> None:
+        """Affiche une erreur (et sa suggestion de résolution pour les OllamaError)."""
+        if isinstance(error, OllamaError):
+            self.console.print(f"\n[hack.error]\\[!] {escape(error.message)}[/]")
+            if error.hint:
+                self.console.print(f"[hack.dim]    → {escape(error.hint)}[/]")
+        else:
+            self.console.print(f"\n[hack.error]\\[!] Erreur inattendue : {escape(str(error))}[/]")
 
     def run(self) -> None:
         """Lance la boucle principale d'interaction dans le terminal."""

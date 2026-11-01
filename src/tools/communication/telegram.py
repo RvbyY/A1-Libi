@@ -9,6 +9,8 @@ from ..ITools import ToolContext, ToolResult, ToolsInterface
 class Telegram(ToolsInterface):
     """Outil d'envoi de messages Telegram via RapideAPI et Config."""
 
+    requires_confirmation = True
+
     TELEGRAM_API_BASE = "https://api.telegram.org"
 
     def __init__(self, token: Optional[str] = None, api_client: Optional[RapideAPI] = None):

@@ -21,10 +21,15 @@ class NewCommand(Command):
 
     def execute(self, app, args):
         limit = app.context.context_limit
+        # Rend l'ancien chat retrouvable depuis le nouveau (RAG)
+        archived = app.session_manager.archive_chats(app.session, app.profile, api_client=app.api)
         app.context = app.session_manager.create_new_context(
             app.session,
             profile_id=app.profile.id,
             context_limit=limit,
         )
-        self.success(f"Nouveau contexte créé (ID {app.context.id}). Historique vierge.")
+        self.success(
+            f"Nouveau contexte créé (ID {app.context.id}). Historique vierge, "
+            f"{archived} message(s) archivé(s) en mémoire longue."
+        )
         return CommandResult.CONTINUE

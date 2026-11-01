@@ -90,7 +90,7 @@ Ces erreurs ont déjà été rencontrées.
 | HTTP 500 | Le champ `thinking` est dans un message | Ne pas l'envoyer (déjà fait dans `Message.format()`) |
 | HTTP 400 | `logprobs: false` ou `top_logprobs: 0` est envoyé | Ne pas envoyer les options vides (déjà fait dans `Chat.format()`) |
 | Le prompt système est ignoré | Il n'est pas en **première** position | Toujours le mettre en premier (déjà fait dans `Chat`) |
-| Modèle introuvable | Nom du modèle mal écrit | Vérifier `HF_MODEL` dans `.env` |
+| Modèle introuvable (HTTP 404) | Nom du modèle mal écrit ou non téléchargé | Converti en `ModelNotFoundError` (voir `src/galerelm/ollama.py`) : `ollama pull <modèle>` ou `--model` |
 
 ---
 

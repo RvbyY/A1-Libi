@@ -9,7 +9,7 @@ from typing import Generator
 from sqlalchemy import create_engine
 from sqlalchemy.orm import Session, sessionmaker
 
-from src.config import config
+from src.config import config, resolve_db_url
 from src.galerelm.models import Base
 
 logger = logging.getLogger("galerelm.database")
@@ -22,7 +22,7 @@ class DatabaseManager:
     """
 
     def __init__(self, db_url: str = None):
-        self.db_url = db_url or config.DB_URL
+        self.db_url = resolve_db_url(db_url or config.DB_URL)
         logger.info(f"Connexion à la base de données ({self.db_url})...")
         self.engine = create_engine(self.db_url)
         Base.metadata.create_all(self.engine)

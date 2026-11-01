@@ -1,4 +1,5 @@
 from collections.abc import Callable
+from contextlib import nullcontext
 from typing import Any
 
 from ..ITools import ToolContext, ToolResult, ToolsInterface
@@ -6,7 +7,7 @@ from ...galerelm.models import ScheduledTask
 
 
 class CompleteTask(ToolsInterface):
-    def __init__(self, session_factory: Callable[[], Any]) -> None:
+    def __init__(self, session_factory: Callable[[], Any] | None = None) -> None:
         self._session_factory = session_factory
 
     @property
@@ -31,7 +32,7 @@ class CompleteTask(ToolsInterface):
         }
 
     def complete_task(self, context: ToolContext, task_id: str) -> dict:
-        with self._session_factory() as session:
+        with self._session_context(context) as session:
             task = self._get_owned_task(session, context, task_id)
             if task.status == "cancelled":
                 raise ValueError("A cancelled task cannot be completed.")
@@ -72,3 +73,13 @@ class CompleteTask(ToolsInterface):
             "recurrence": task.recurrence,
             "status": task.status,
         }
+
+    def _session_context(self, context: ToolContext):
+        if self._session_factory is not None:
+            return self._session_factory()
+        if context.session is None:
+            raise RuntimeError("A database session is required.")
+        return nullcontext(context.session)
+
+
+CompleteTaskTool = CompleteTask

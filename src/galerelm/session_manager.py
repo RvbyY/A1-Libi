@@ -13,12 +13,16 @@ from src.galerelm.models import (
     Context,
     DeepContext,
     LongTermMemory,
+    Message,
     MessageList,
     Profile,
     PromptTemplate,
 )
 
 logger = logging.getLogger("galerelm.session_manager")
+
+# Rôles copiés dans la mémoire longue à l'archivage d'un chat (les messages 'tool' et 'system' sont du bruit)
+ARCHIVED_ROLES = ("user", "assistant")
 
 
 class SessionManager:
@@ -150,6 +154,33 @@ class SessionManager:
         return count
 
     # ── Gestion de la Mémoire Long Terme (RAG) ───────────────────────
+
+    def archive_chats(self, session: Session, profile: Profile, api_client=None) -> int:
+        """
+        Copie dans la mémoire longue les messages de tous les chats du profil qui n'y sont pas encore,
+        pour qu'un nouveau chat puisse les retrouver par RAG. Les chats restent intacts.
+        Sans cela, seuls les messages qui débordent de CONTEXT_LIMIT étaient archivés :
+        une conversation courte était invisible depuis les autres chats.
+        Retourne le nombre de messages archivés.
+        """
+        deep_context = self.ensure_deep_context(session, profile)
+        known = {(m.role, m.content) for m in deep_context.memories}
+        pending: list[Message] = []
+        for context in self.list_contexts(session, profile.id):
+            for message in context.messages:
+                key = (message.role, message.content)
+                if message.role not in ARCHIVED_ROLES or not (message.content or "").strip() or key in known:
+                    continue
+                known.add(key)
+                # Copie détachée : le message d'origine reste dans son chat
+                pending.append(Message(role=message.role, content=message.content))
+
+        if not pending:
+            return 0
+        deep_context.save(MessageList(pending), api_client)
+        session.commit()
+        logger.info(f"[SessionManager] {len(pending)} messages archivés en mémoire longue.")
+        return len(pending)
 
     def delete_memory(self, session: Session, memory_id: int) -> bool:
         memory = session.query(LongTermMemory).filter_by(id=memory_id).first()

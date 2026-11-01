@@ -1,4 +1,5 @@
 from collections.abc import Callable
+from contextlib import nullcontext
 from datetime import datetime
 from typing import Any
 
@@ -7,7 +8,7 @@ from ...galerelm.models import ScheduledTask
 
 
 class CreateTask(ToolsInterface):
-    def __init__(self, session_factory: Callable[[], Any]) -> None:
+    def __init__(self, session_factory: Callable[[], Any] | None = None) -> None:
         self._session_factory = session_factory
 
     @property
@@ -56,7 +57,7 @@ class CreateTask(ToolsInterface):
         except ValueError as exc:
             raise ValueError("scheduled_at must be a valid ISO 8601 date.") from exc
 
-        with self._session_factory() as session:
+        with self._session_context(context) as session:
             task = ScheduledTask(
                 profile_id=context.user_id,
                 prompt=prompt.strip(),
@@ -95,3 +96,13 @@ class CreateTask(ToolsInterface):
             "recurrence": task.recurrence,
             "status": task.status,
         }
+
+    def _session_context(self, context: ToolContext):
+        if self._session_factory is not None:
+            return self._session_factory()
+        if context.session is None:
+            raise RuntimeError("A database session is required.")
+        return nullcontext(context.session)
+
+
+CreateTaskTool = CreateTask

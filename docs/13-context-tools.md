@@ -391,6 +391,57 @@ Les trois noms exposés au modèle sont :
 
 ---
 
+## 🧪 Tools selftest
+
+Fichier :
+[`src/tools/diagnostic/selftest_tool.py`](../src/tools/diagnostic/selftest_tool.py)
+
+`tools_selftest` sert uniquement à vérifier que l'appel d'outils fonctionne de bout en bout :
+schéma envoyé au modèle, validation, exécution, réinjection du résultat et logs dans la CLI.
+Il n'a aucun effet de bord et ne demande donc pas de confirmation.
+
+### Arguments
+
+```json
+{
+  "message": "ping",
+  "mode": "echo",
+  "repeat": 2
+}
+```
+
+| Argument | Obligatoire | Valeurs |
+|----------|-------------|---------|
+| `message` | oui | texte de 1 à 200 caractères |
+| `mode` | non | `echo` (défaut) renvoie le message, `fail` simule une erreur |
+| `repeat` | non | entier de 1 à 5 (défaut : 1) |
+
+### Résultat
+
+```python
+ToolResult(
+    success=True,
+    message="Selftest OK: ping ping",
+    data={"echo": "ping ping", "repeat": 2, "user_id": "...", "checked_at": "2026-10-30T09:00:00+00:00"},
+)
+```
+
+Avec `"mode": "fail"`, le tool renvoie `success=False` et
+`Simulated failure requested (mode=fail).`, ce qui permet de vérifier l'affichage d'une erreur.
+
+### Tester dans le terminal
+
+Demandez simplement : *« Teste les outils avec le message ping »*. La CLI affiche l'appel :
+
+```text
+⚙ tool tools_selftest(message='ping') ✓ Selftest OK: ping (0 ms)
+```
+
+Chaque appel d'outil est affiché de la même façon (nom, arguments tronqués, ✓/✗, message, durée),
+et journalisé par le logger `sensai.tools`.
+
+---
+
 ## ✅ Lire un `ToolResult`
 
 Tous les tools retournent la même structure.

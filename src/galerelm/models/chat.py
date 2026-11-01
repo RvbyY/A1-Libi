@@ -11,6 +11,7 @@ from src.galerelm.models.options import Options
 from src.galerelm.models.prompt import Prompt
 from src.galerelm.models.tools import ToolsList
 from src.galerelm.models.response import ChatResponse
+from src.galerelm.ollama import OllamaError
 from src.rapideAPI.client import RapideAPI
 
 logger = logging.getLogger("galerelm.models.chat")
@@ -102,6 +103,9 @@ class Chat:
         logger.info(f"[Chat] Démarrage de la génération avec le modèle {self.model}...")
 
         for chunk in client.stream_ndjson("api/chat", json_data=self.format()):
+            if "error" in chunk:
+                # Ollama peut signaler une erreur au milieu du flux avec un statut HTTP 200
+                raise OllamaError(f"Erreur Ollama pendant la génération : {chunk['error']}")
             msg_chunk = chunk.get("message", {})
             token = msg_chunk.get("content", "")
             if token:

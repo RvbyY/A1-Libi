@@ -177,6 +177,13 @@ En pratique :
 4. Le tool vérifie l'utilisateur quand c'est nécessaire.
 5. Le tool réalise l'action.
 6. Le tool transforme la réponse en `ToolResult`.
+7. Le résultat est ajouté à l'historique (message de rôle `tool`) et affiché dans la CLI.
+8. Le modèle est relancé avec ce résultat pour formuler sa réponse finale.
+   Il peut rappeler un outil, dans la limite de `max_tool_rounds` relances (3 par défaut).
+
+En mode `--anti-hallucination`, le graphe suit le même chemin
+(`generate → tools → generate → grade`). Une régénération demandée par le vérificateur
+ne relance jamais les outils, pour ne pas répéter une action (un email envoyé deux fois, par exemple).
 
 ---
 
@@ -190,6 +197,8 @@ src/tools/
 ├── registry.py                  → Registre et dispatch
 ├── calendar/
 │   └── calendar_tools.py        → Agenda en mémoire
+├── diagnostic/
+│   └── selftest_tool.py         → Tool de test (echo / échec simulé)
 ├── communication/
 │   ├── email.py                 → Email SMTP
 │   ├── telegram.py              → Telegram Bot API
@@ -278,6 +287,10 @@ d'environnement.
 - Les tools de tâches créent, complètent et exportent les tâches.
 - La création d'une tâche ne valide pas encore la syntaxe de `recurrence` ;
   cette validation est appliquée par le gestionnaire lors de la répétition.
+- `tools_selftest` est exposé au modèle comme les autres tools : sa description lui
+  demande de ne l'utiliser que si l'utilisateur veut tester les outils.
+- Les logs d'appels d'outils sont affichés dans la CLI uniquement ; la webapp ne les
+  affiche pas encore (seul le visualiseur montre l'étape « tools »).
 - L'export de tâche retourne des données JSON compatibles, mais ne crée pas
   encore un fichier physique ni un envoi vers un canal externe.
 

@@ -1,6 +1,6 @@
-# Installation et Utilisation de SensAI
+# Installation et Utilisation d'A1Libi
 
-Ce guide explique comment installer SensAI.
+Ce guide explique comment installer A1Libi.
 Il vous montre ensuite comment l'utiliser de deux manières :
 1. Dans le terminal (en ligne de commande).
 2. Sur le web (avec le Wrapper pour Gradio ou FastAPI).
@@ -10,7 +10,7 @@ Il vous montre ensuite comment l'utiliser de deux manières :
 ## 🛠️ 1. Installation du projet
 
 **Étape 1 : Préparer l'environnement Python**
-SensAI a besoin de Python 3.10 ou plus.
+A1Libi a besoin de Python 3.10 ou plus.
 Ouvrez votre terminal et tapez ces commandes :
 
 ```bash
@@ -25,11 +25,11 @@ pip install -r requirements.txt
 ```
 
 **Étape 2 : Lancer Ollama**
-SensAI utilise Ollama pour faire tourner l'IA localement.
+A1Libi utilise Ollama pour faire tourner l'IA localement.
 Assurez-vous que l'application Ollama est ouverte en arrière-plan.
 
 **Étape 3 : Configurer le projet (Optionnel)**
-Par défaut, SensAI utilise :
+Par défaut, A1Libi utilise :
 - Le modèle : `llama3.2`
 - La base de données : `galerelm.db` (créée automatiquement)
 - Le port Ollama : `http://localhost:11434`
@@ -43,7 +43,7 @@ Vous pouvez modifier ces valeurs dans le fichier `.env` si vous le souhaitez.
 C'est la méthode la plus rapide pour tester l'IA.
 Tout se passe directement dans votre invite de commande.
 
-**Pour lancer SensAI :**
+**Pour lancer A1Libi :**
 ```bash
 python -m src.main
 ```

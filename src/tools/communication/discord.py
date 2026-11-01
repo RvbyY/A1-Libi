@@ -8,6 +8,8 @@ from ..ITools import ToolContext, ToolResult, ToolsInterface
 class Discord(ToolsInterface):
     """Outil d'envoi de messages privés Discord via l'API v10 et RapideAPI."""
 
+    requires_confirmation = True
+
     DISCORD_API_BASE = "https://discord.com/api/v10"
 
     def __init__(self, token: Optional[str] = None, api_client: Optional[RapideAPI] = None):

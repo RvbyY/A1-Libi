@@ -10,6 +10,8 @@ from ..ITools import ToolContext, ToolResult, ToolsInterface
 class Email(ToolsInterface):
     """Outil d'envoi d'emails via SMTP configuré dans Config."""
 
+    requires_confirmation = True
+
     def __init__(self, smtp_host: Optional[str] = None, smtp_port: Optional[int] = None):
         self.smtp_host = smtp_host or config.SMTP_HOST
         self.smtp_port = smtp_port or config.SMTP_PORT

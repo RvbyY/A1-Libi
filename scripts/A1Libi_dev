@@ -1,0 +1,176 @@
+#!/usr/bin/env sh
+
+cd "$(dirname "$0")/.." || exit 1
+
+# ── Backend ─────────────────────────────────────────────────
+
+StopBackend()
+{
+    echo -e "\n[+] Arrêt du backend..."
+    [ "$STARTED_BY_SCRIPT" -eq 1 ] && kill "$OLLAMA_PID" 2>/dev/null
+    exit 0
+}
+
+startOllama()
+{
+    if pgrep -x "ollama" > /dev/null; then
+        OLLAMA_PID=$(pgrep -x "ollama" | head -n 1)
+        STARTED_BY_SCRIPT=0
+        echo "[*] Ollama est déjà en cours d'exécution (PID: $OLLAMA_PID)."
+        return
+    fi
+
+    echo "[+] Lancement d'Ollama en tâche de fond..."
+    export OLLAMA_KEEP_ALIVE=-1
+    ollama serve > ollama.log 2>&1 &
+    OLLAMA_PID=$!
+    STARTED_BY_SCRIPT=1
+}
+
+waitForOllama()
+{
+    echo "[*] Attente du serveur sur $OLLAMA_HOST..."
+    until curl -s "$OLLAMA_HOST/api/tags" > /dev/null; do
+        sleep 0.5
+    done
+    echo "[+] API Ollama opérationnelle."
+}
+
+pullModel()
+{
+    local model="$1"
+
+    echo "[*] Vérification de la présence locale de $model..."
+    if curl -s "$OLLAMA_HOST/api/tags" | grep -q "$model"; then
+        echo "[+] Modèle déjà disponible localement."
+        return
+    fi
+    echo "[!] Modèle absent. Téléchargement en cours..."
+    ollama pull "$model"
+}
+
+preloadModel()
+{
+    local model="$1" response http_code body
+
+    echo "[*] Préchargement de $model en mémoire..."
+    response=$(curl -s -w "\n%{http_code}" -X POST "$OLLAMA_HOST/api/generate" \
+        -H "Content-Type: application/json" \
+        -d "{\"model\": \"$model\", \"keep_alive\": -1}")
+
+    http_code=$(echo "$response" | tail -n1)
+    body=$(echo "$response" | sed '$d')
+
+    if [ "$http_code" -ne 200 ]; then
+        echo "[!] ERREUR HTTP $http_code lors du POST /api/generate: $body" >&2
+        exit 1
+    fi
+    echo "[+] Modèle préchargé (HTTP $http_code)."
+}
+
+watchOllama()
+{
+    if [ "$STARTED_BY_SCRIPT" -eq 1 ]; then
+        echo "[*] Logs Ollama en direct (Ctrl+C pour quitter)..."
+        tail -f ollama.log &
+        local tail_pid=$!
+        wait "$OLLAMA_PID"
+        kill "$tail_pid" 2>/dev/null
+    else
+        echo "[*] Surveillance du processus Ollama actif (Ctrl+C pour quitter)..."
+        while kill -0 "$OLLAMA_PID" 2>/dev/null; do
+            sleep 2
+        done
+        echo "[-] Le processus Ollama externe s'est arrêté."
+    fi
+}
+
+runBackend()
+{
+    set -e
+    source .env
+    trap StopBackend INT TERM
+
+    startOllama
+    waitForOllama
+    pullModel "$HF_MODEL"
+    pullModel "$EMBED_MODEL"
+    preloadModel "$HF_MODEL"
+
+    echo "[✓] Prêt ! Le backend écoute sur $OLLAMA_HOST avec $HF_MODEL chargé."
+    echo "------------------------------------------------------------------"
+
+    watchOllama
+}
+
+# ── Frontend ─────────────────────────────────────────────────
+
+runFrontend()
+{
+    set -e
+
+    export PYTHONPATH="$PWD:$PWD/src"
+    .venv/bin/gradio src/webapp/app.py --demo-name frontend
+}
+
+runCli()
+{
+    set -e
+
+    export PYTHONPATH="$PWD:$PWD/src"
+    .venv/bin/python src/main.py
+}
+
+# ── Setup ─────────────────────────────────────────────────
+
+setupProject()
+{
+    set -e
+
+    echo "[+] Creating virtual environment..."
+    python3 -m venv .venv
+
+    echo "[+] Installing dependencies..."
+    .venv/bin/python -m pip install --upgrade pip
+    .venv/bin/pip install -r requirements.txt
+
+    if [ ! -f .env ]; then
+        echo "[+] Creating .env from .env.exemple..."
+        cp .env.exemple .env
+    else
+        echo "[*] .env already exists."
+    fi
+
+    echo
+    echo "[✓] Setup complete."
+    echo
+    echo "Next steps (two terminals):"
+    echo "  ./scripts/A1Libi_dev -back"
+    echo "  ./scripts/A1Libi_dev -front   (or -cli)"
+}
+
+# ── Main ─────────────────────────────────────────────────
+
+usage()
+{
+    echo "Usage: $0 <option>"
+    echo
+    echo "  -setup   create .venv, install deps, create .env"
+    echo "  -back    start Ollama + pull/preload models (blocking)"
+    echo "  -front   start the Gradio web app (hot reload)"
+    echo "  -cli     start the CLI"
+}
+
+main()
+{
+    case "$1" in
+        -setup) setupProject ;;
+        -back)  runBackend ;;
+        -front) runFrontend ;;
+        -cli)   runCli ;;
+        *)      usage; exit 1 ;;
+    esac
+}
+
+
+main "$@"

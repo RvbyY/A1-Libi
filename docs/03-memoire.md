@@ -48,6 +48,18 @@ Ajout :  [ A, B, C, D, E ]     ← 5, trop !
 Après :  [ B, C, D, E ]        ← A part en mémoire longue
 ```
 
+### Quand on ouvre un nouveau chat
+
+`/new` dans le terminal, ou « nouveau chat » dans la webapp, **archive aussi les chats précédents**
+dans la mémoire longue (`SessionManager.archive_chats`) :
+
+- seuls les messages `user` et `assistant` non vides sont copiés ;
+- un message déjà archivé n'est pas recopié ;
+- l'ancien chat reste intact et consultable.
+
+Sans cela, une conversation de moins de 10 messages n'atteignait jamais la mémoire longue :
+le nouveau chat ne pouvait pas la retrouver.
+
 ---
 
 ## 🔵 La mémoire longue (`DeepContext`)
@@ -89,22 +101,28 @@ Ce calcul s'appelle la **similarité cosinus**.
 Les souvenirs sont ajoutés aux **instructions** de l'IA :
 
 ```
-Tu es SensAI, un assistant intelligent et concis.
+Tu es A1Libi, un assistant intelligent et concis.
 
-Voici des informations pertinentes issues de conversations précédentes :
+Souvenirs de tes conversations précédentes avec l'utilisateur. Ce sont des faits que l'utilisateur
+t'a déjà dits : utilise-les pour répondre à toute question sur lui ou sur ce qu'il t'a confié,
+au lieu de dire que tu ne sais pas :
 - [user] J'habite à Paris
 - [assistant] Noté, vous habitez à Paris.
 ```
 
+Le bloc est placé **juste après les instructions**, avant les règles et les outils :
+en fin de prompt et sans consigne, les petits modèles l'ignoraient.
+
 Cette technique s'appelle le **RAG**.
 
-Le code se trouve dans `SensAI._build_augmented_prompt()`.
+Le code se trouve dans `PromptBuilder.with_rag()` et `PromptBuilder.build()`
+([prompt.py](../src/galerelm/models/prompt.py)).
 
 ---
 
 ## 🛟 Si Ollama ne répond pas
 
-SensAI ne plante pas.
+A1Libi ne plante pas.
 
 - Les messages sont **quand même archivés**.
 - Mais leur vecteur est **vide**.
@@ -120,7 +138,9 @@ C'est le **mode dégradé**.
 
 ## 💾 Ce qui est sauvegardé
 
-Tout est dans `galerelm.db`.
+Tout est dans `galerelm.db`, **à la racine du projet**.
+Un chemin SQLite relatif (`DB_URL`, `--db`, `config.yaml`) est toujours résolu depuis la racine :
+lancer l'outil depuis `src/` ou depuis la racine ouvre la même base.
 
 | Table | Contenu |
 |-------|---------|
@@ -130,7 +150,7 @@ Tout est dans `galerelm.db`.
 | `deep_contexts` | Un par conversation |
 | `long_term_memories` | Les souvenirs, avec leur vecteur |
 
-Quand vous relancez SensAI :
+Quand vous relancez A1Libi :
 
 - La mémoire courte est **rechargée**.
 - La mémoire longue est **rechargée**.

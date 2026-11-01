@@ -66,6 +66,8 @@ class SearchMemoryTool(ToolsInterface):
 class ClearSessionTool(ToolsInterface):
     """Réinitialise la mémoire court terme (messages du contexte courant)."""
 
+    requires_confirmation = True
+
     @property
     def name(self) -> str:
         return "clear_session"
